@@ -1,5 +1,5 @@
 -- =============================================================================
--- LINGUACONNECT - MIGRATION 0005: TRIGGERS, RATE LIMITS & RETENTION POLICIES
+-- LINGUEVIA - MIGRATION 0005: TRIGGERS, RATE LIMITS & RETENTION POLICIES
 -- Description: Automates timestamp updates, request-to-conversation promotion,
 --              database-level rate limiting, and retention cleanup jobs.
 -- =============================================================================
@@ -41,7 +41,7 @@ SET search_path = public
 AS $$
 BEGIN
     IF NEW.birth_date > (CURRENT_DATE - INTERVAL '18 years') THEN
-        RAISE EXCEPTION 'LinguaConnect is strictly for adults (18+ years old).';
+        RAISE EXCEPTION 'Linguevia is strictly for adults (18+ years old).';
     END IF;
 
     UPDATE public.profiles

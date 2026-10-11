@@ -14,7 +14,7 @@ import {
 
 const FAQS = [
   {
-    q: '¿Por qué LinguaConnect es exclusivamente para mayores de 18 años?',
+    q: '¿Por qué Linguevia es exclusivamente para mayores de 18 años?',
     a: 'Para garantizar un entorno de intercambio seguro, legalmente claro y adaptado a conversaciones entre personas adultas de distintos países. Verificamos la mayoría de edad en el registro y mediante restricciones en la base de datos (CHECK constraint y políticas RLS).',
   },
   {
@@ -49,7 +49,7 @@ export default function HelpCenterPage() {
           <HelpCircle className="w-3.5 h-3.5" />
           <span>Soporte, Seguridad y Normas de la Comunidad</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900">Centro de Ayuda LinguaConnect</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900">Centro de Ayuda Linguevia</h1>
         <p className="text-xs sm:text-sm text-slate-600">
           Guía rápida sobre privacidad, aprendizaje tándem, llamadas WebRTC y moderación.
         </p>

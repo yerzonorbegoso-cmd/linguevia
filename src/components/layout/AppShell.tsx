@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
                 <Globe2 className="w-5 h-5" />
               </span>
-              <span>LinguaConnect</span>
+              <span>Linguevia</span>
               <span className="hidden sm:inline-block text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
                 18+ Internacional
               </span>

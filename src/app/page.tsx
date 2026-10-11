@@ -232,8 +232,8 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-teal-600" />
             <span>
-              <strong>LinguaConnect</strong> (Nombre provisional) · Plataforma para mayores de 18
-              años.
+              <strong>Linguevia</strong> (https://linguevia.com) · Plataforma internacional de
+              intercambio de idiomas para mayores de 18 años.
             </span>
           </div>
           <div className="flex items-center gap-4">

@@ -256,7 +256,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
   const privateAccounts: PrivateAccountRecord[] = [
     {
       user_id: 'demo-user-elena',
-      email: 'elena.demo@linguaconnect.test',
+      email: 'elena.demo@linguevia.test',
       email_verified: true,
       birth_date: '1993-04-18',
       auth_provider: 'email',
@@ -264,7 +264,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
     },
     {
       user_id: 'demo-user-liam',
-      email: 'liam.demo@linguaconnect.test',
+      email: 'liam.demo@linguevia.test',
       email_verified: true,
       birth_date: '1991-11-05',
       auth_provider: 'email',
@@ -272,7 +272,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
     },
     {
       user_id: 'demo-user-claire',
-      email: 'claire.demo@linguaconnect.test',
+      email: 'claire.demo@linguevia.test',
       email_verified: true,
       birth_date: '1995-07-22',
       auth_provider: 'email',
@@ -280,7 +280,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
     },
     {
       user_id: 'demo-user-kenji',
-      email: 'kenji.demo@linguaconnect.test',
+      email: 'kenji.demo@linguevia.test',
       email_verified: true,
       birth_date: '1994-02-14',
       auth_provider: 'email',

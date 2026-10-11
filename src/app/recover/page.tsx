@@ -76,7 +76,7 @@ export default function RecoverPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="elena.demo@linguaconnect.test"
+                placeholder="elena.demo@linguevia.test"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
               />
             </div>

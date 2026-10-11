@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LinguaConnect — Comunidad Internacional de Intercambio de Idiomas (+18)",
+  title: "Linguevia — Comunidad Internacional de Intercambio de Idiomas (+18)",
   description:
     "Plataforma internacional para adultos donde practicar idiomas en tiempo real mediante chat con correcciones, notas de voz y videollamadas 1-a-1.",
 };
@@ -36,7 +36,7 @@ export default function RootLayout({
           <Suspense
             fallback={
               <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">
-                Cargando LinguaConnect...
+                Cargando Linguevia...
               </div>
             }
           >

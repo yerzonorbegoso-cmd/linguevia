@@ -27,8 +27,8 @@ export function getPublicEnv(): PublicEnvConfig {
   const isValidAdSenseId = /^ca-pub-\d{10,20}$/.test(adsenseClientId);
 
   return {
-    appName: process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'LinguaConnect',
-    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000',
+    appName: process.env.NEXT_PUBLIC_APP_NAME?.trim() || 'Linguevia',
+    appUrl: process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://linguevia.com',
     demoMode: process.env.NEXT_PUBLIC_DEMO_MODE !== 'false',
     supabaseUrl,
     supabaseAnonKey,

@@ -27,9 +27,9 @@ import {
   isAuthorizedConversationParticipant,
 } from '@/lib/security/rls-guard';
 
-const STORAGE_KEY = 'linguaconnect_shared_store_v1';
-const SESSION_KEY = 'linguaconnect_session_user_v1';
-const BROADCAST_CHANNEL_NAME = 'linguaconnect_realtime_bus';
+const STORAGE_KEY = 'linguevia_shared_store_v1';
+const SESSION_KEY = 'linguevia_session_user_v1';
+const BROADCAST_CHANNEL_NAME = 'linguevia_realtime_bus';
 
 export interface ToastNotice {
   id: string;
@@ -355,7 +355,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       if (!input.confirmAdult || !isAdultBirthDate(input.birthDate)) {
         return {
           ok: false,
-          error: 'Registro denegado: LinguaConnect es exclusivamente para mayores de 18 años.',
+          error: 'Registro denegado: Linguevia es exclusivamente para mayores de 18 años.',
         };
       }
       if (!input.acceptTerms) {

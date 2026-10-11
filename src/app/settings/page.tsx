@@ -255,7 +255,7 @@ export default function SettingsAndPrivacyPage() {
           Consentimiento publicitario y normativas regionales (RGPD / CCPA)
         </h2>
         <p className="text-xs text-slate-500">
-          LinguaConnect se financia mediante publicidad no intrusiva. Aquí puedes elegir cómo se
+          Linguevia se financia mediante publicidad no intrusiva. Aquí puedes elegir cómo se
           procesan los espacios publicitarios en tu sesión.
         </p>
 

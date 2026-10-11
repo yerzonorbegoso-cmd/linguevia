@@ -179,7 +179,7 @@ export default function PublicProfilePage({
         >
           <Lock className="w-4 h-4 text-teal-600 shrink-0" />
           <span>
-            <strong>Protección de Privacidad LinguaConnect:</strong> El correo electrónico, la
+            <strong>Protección de Privacidad Linguevia:</strong> El correo electrónico, la
             fecha de nacimiento y la ubicación precisa nunca se muestran en ningún perfil público.
           </span>
         </div>

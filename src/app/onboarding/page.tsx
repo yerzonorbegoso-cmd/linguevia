@@ -439,7 +439,7 @@ export default function OnboardingPage() {
             className="w-full py-3 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Guardar perfil y entrar a LinguaConnect</span>
+            <span>Guardar perfil y entrar a Linguevia</span>
           </button>
         </form>
       </div>

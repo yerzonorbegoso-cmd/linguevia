@@ -57,7 +57,7 @@ export const registerSchema = z.object({
   birthDate: z
     .string()
     .refine((val) => isAdultBirthDate(val), {
-      message: 'Debes ser mayor de 18 años para registrarte en LinguaConnect.',
+      message: 'Debes ser mayor de 18 años para registrarte en Linguevia.',
     }),
   countryCode: z
     .string()

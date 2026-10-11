@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('LinguaConnect E2E Multi-Browser & RLS Isolation Verification', () => {
+test.describe('Linguevia E2E Multi-Browser & RLS Isolation Verification', () => {
   test('verifies +18 registration, public profile privacy, real-time chat, WebRTC call across two browsers, and RLS isolation', async ({
     browser,
   }) => {
@@ -36,7 +36,7 @@ test.describe('LinguaConnect E2E Multi-Browser & RLS Isolation Verification', ()
     await pageElena.goto('http://localhost:3000/u/kenji_tokyo_demo');
     await expect(pageElena.getByTestId('public-profile-card')).toBeVisible();
     const profileHtml = await pageElena.content();
-    expect(profileHtml).not.toContain('kenji.demo@linguaconnect.test');
+    expect(profileHtml).not.toContain('kenji.demo@linguevia.test');
     expect(profileHtml).not.toContain('1994-02-14');
     // Kenji has a pending moderation report ('rep-demo-1'), so ads must be automatically suppressed!
     await expect(pageElena.getByTestId('ad-suppressed-moderation')).toBeVisible();

@@ -1,12 +1,12 @@
-# LinguaConnect — Plataforma Internacional de Intercambio de Idiomas (+18)
+# Linguevia — Plataforma Internacional de Intercambio de Idiomas (+18)
 
-> **Nota sobre la marca**: El nombre **LinguaConnect** es provisional. La configuración de identidad (`NEXT_PUBLIC_APP_NAME` y `NEXT_PUBLIC_APP_URL`) está desacoplada mediante variables de entorno para permitir cambiar de marca o dominio sin tocar la lógica de negocio.
+> **Dominio oficial**: `https://linguevia.com`. La configuración de identidad (`NEXT_PUBLIC_APP_NAME="Linguevia"` y `NEXT_PUBLIC_APP_URL="https://linguevia.com"`) está gestionada mediante variables de entorno.
 
 ---
 
 ## 1. Descripción General y Arquitectura (Web + Futuro Flutter)
 
-**LinguaConnect** es una plataforma web profesional, responsive (mobile-first) y segura diseñada exclusivamente para que personas adultas (**+18 años**) de diferentes países encuentren compañeros con intereses lingüísticos complementarios, conversen en tiempo real y aprendan idiomas de manera natural.
+**Linguevia** es una plataforma web profesional, responsive (mobile-first) y segura diseñada exclusivamente para que personas adultas (**+18 años**) de diferentes países encuentren compañeros con intereses lingüísticos complementarios, conversen en tiempo real y aprendan idiomas de manera natural.
 
 ### Compatibilidad nativa con futura App Móvil en Flutter
 La arquitectura evita acoplar las reglas críticas al frontend de React:
@@ -55,8 +55,8 @@ Ninguna clave privada se expone en el cliente (`SUPABASE_SERVICE_ROLE_KEY`, `LIV
 
 | Variable | Ámbito | Descripción |
 | :--- | :--- | :--- |
-| `NEXT_PUBLIC_APP_NAME` | Público | Nombre visible de la plataforma (por defecto `LinguaConnect`). |
-| `NEXT_PUBLIC_APP_URL` | Público | URL base de la aplicación (`http://localhost:3000` en desarrollo). |
+| `NEXT_PUBLIC_APP_NAME` | Público | Nombre visible de la plataforma (por defecto `Linguevia`). |
+| `NEXT_PUBLIC_APP_URL` | Público | URL oficial de la aplicación (`https://linguevia.com` en producción, `http://localhost:3000` en desarrollo). |
 | `NEXT_PUBLIC_DEMO_MODE` | Público | `"true"` habilita los perfiles ficticios de prueba de `demo_seed.sql` cuando no se han conectado aún credenciales en la nube. En producción debe establecerse en `"false"`. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Público | URL del proyecto Supabase (`https://<project-ref>.supabase.co`). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Público | Clave anónima pública de Supabase (segura gracias a Row Level Security). |
@@ -132,7 +132,7 @@ El sistema sincroniza eventos en tiempo real (Supabase Realtime cuando está con
 ### Despliegue en proveedor compatible con Next.js (Vercel / Cloudflare / Docker)
 1. Conecta el repositorio Git a tu proveedor de alojamiento Next.js.
 2. Configura las variables de entorno listadas en la Sección 3 y asegúrate de establecer `NEXT_PUBLIC_DEMO_MODE="false"`.
-3. Configura en Supabase Authentication las URLs de redirección permitidas (`https://tu-dominio.com/**`) para verificación de correo y Google OAuth.
+3. Configura en Supabase Authentication las URLs de redirección permitidas (`https://linguevia.com/**`) para verificación de correo y Google OAuth.
 
 ### Plan de Recuperación y Retención de Datos
 - **Backups de Base de Datos**: Activa Point-in-Time Recovery (PITR) o copias diarias automáticas en Supabase PostgreSQL.
@@ -143,7 +143,7 @@ El sistema sincroniza eventos en tiempo real (Supabase Realtime cuando está con
 
 ## 7. Costes Estimados y Límites de Servicios Externos
 
-| Servicio | Nivel Gratuito / Inicial | Límites Aplicados en LinguaConnect | Escalado / Coste Estimado en Producción |
+| Servicio | Nivel Gratuito / Inicial | Límites Aplicados en Linguevia | Escalado / Coste Estimado en Producción |
 | :--- | :--- | :--- | :--- |
 | **Supabase (DB, Auth, Realtime, Storage)** | Free Tier: 500 MB DB, 1 GB Storage, 50.000 MAU, 2M mensajes Realtime/mes. | Notas de voz limitadas a **máx. 5 MB** y 180s; máximo **45 mensajes/min** y **20 solicitudes/día** por usuario; purga automática de retención. | Plan Pro (~25 USD/mes) incluye 8 GB DB, 100 GB Storage y backups diarios automáticos. |
 | **LiveKit Cloud (WebRTC Audio/Video)** | Free Tier: 5.000 minutos de participante/mes, sin coste fijo inicial. | Tokens con expiración estricta (`ttl: 15m`), máximo **12 sesiones/hora** por usuario, **grabación desactivada por defecto** (`roomRecord: false`). | Uso adicional: ~0.0005 USD/min en audio y ~0.004 USD/min en video 1-a-1. |

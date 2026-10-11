@@ -42,7 +42,7 @@ export default function RegisterPage() {
       const calculated = calculateAgeYears(birthDate);
       setError(
         calculated >= 0 && calculated < 18
-          ? `Acceso restringido: tienes ${calculated} años. LinguaConnect es exclusivamente para mayores de 18 años.`
+          ? `Acceso restringido: tienes ${calculated} años. Linguevia es exclusivamente para mayores de 18 años.`
           : 'Introduce una fecha de nacimiento válida (mayor de 18 años).'
       );
       return;
@@ -194,7 +194,7 @@ export default function RegisterPage() {
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Registro exclusivo para mayores de 18 años</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Crea tu cuenta en LinguaConnect</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Crea tu cuenta en Linguevia</h1>
           <p className="text-xs text-slate-500">
             Tu correo electrónico y tu fecha de nacimiento se almacenan de forma privada y nunca se
             publican en tu perfil público.
