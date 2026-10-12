@@ -27,6 +27,7 @@ import {
   areUsersBlocked,
   isAuthorizedConversationParticipant,
 } from '@/lib/security/rls-guard';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'linguevia_shared_store_v1';
 const SESSION_KEY = 'linguevia_session_user_v1';
@@ -308,6 +309,130 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Automatically synchronize real Supabase OAuth (Google) sessions when returning from OAuth redirect
+  useEffect(() => {
+    if (!isHydrated) return;
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+
+    const syncOAuthUser = (oauthUser: {
+      id: string;
+      email?: string;
+      user_metadata?: Record<string, unknown>;
+    }) => {
+      const cleanEmail = (oauthUser.email ?? '').trim().toLowerCase();
+      if (!cleanEmail) return;
+
+      const metaName =
+        (typeof oauthUser.user_metadata?.full_name === 'string' &&
+          oauthUser.user_metadata.full_name) ||
+        (typeof oauthUser.user_metadata?.name === 'string' && oauthUser.user_metadata.name) ||
+        cleanEmail.split('@')[0];
+
+      const metaAvatar =
+        typeof oauthUser.user_metadata?.avatar_url === 'string'
+          ? oauthUser.user_metadata.avatar_url
+          : null;
+
+      commitStore((prev) => {
+        const existingPriv = prev.privateAccounts.find(
+          (a) => a.email.toLowerCase() === cleanEmail || a.user_id === oauthUser.id
+        );
+        if (existingPriv) {
+          setActiveSessionUser(existingPriv.user_id);
+          return prev;
+        }
+
+        const baseUser = cleanEmail
+          .split('@')[0]
+          .replace(/[^a-z0-9_.-]/g, '_')
+          .slice(0, 22);
+        const uniqueUsername = prev.profiles.some((p) => p.username === baseUser)
+          ? `${baseUser}_${Math.floor(100 + Math.random() * 900)}`
+          : baseUser.length >= 3
+          ? baseUser
+          : `${baseUser}_pe`;
+
+        const nowIso = new Date().toISOString();
+        const newProfile: UserProfile = {
+          id: oauthUser.id,
+          username: uniqueUsername,
+          display_name: metaName,
+          avatar_url: metaAvatar,
+          bio: '',
+          country_code: 'PE',
+          timezone: 'America/Lima',
+          learning_goals: 'Practicar conversación fluida y vocabulario cotidiano.',
+          availability_slots: [{ day: 'sat', window: 'evening' }],
+          privacy_settings: {
+            show_country: true,
+            show_timezone: true,
+            allow_calls_from_partners: true,
+            allow_search_indexing: true,
+            show_online_status: true,
+          },
+          role: 'user',
+          is_adult_verified: true,
+          onboarding_completed: false,
+          is_suspended: false,
+          last_active_at: nowIso,
+          created_at: nowIso,
+          updated_at: nowIso,
+          languages: [
+            {
+              id: `ul-${Date.now()}-1`,
+              user_id: oauthUser.id,
+              language_code: 'es',
+              relation_type: 'native',
+              proficiency_level: 'native',
+              target_goal: 'Compartir mi idioma nativo y cultura',
+            },
+            {
+              id: `ul-${Date.now()}-2`,
+              user_id: oauthUser.id,
+              language_code: 'en',
+              relation_type: 'learning',
+              proficiency_level: 'B1',
+              target_goal: 'Practicar conversación fluida con hablantes nativos',
+            },
+          ],
+          interest_slugs: ['travel-culture', 'technology'],
+        };
+
+        const newPriv: PrivateAccountRecord = {
+          user_id: oauthUser.id,
+          email: cleanEmail,
+          email_verified: true,
+          birth_date: '1995-06-15',
+          auth_provider: 'google',
+        };
+
+        setActiveSessionUser(oauthUser.id);
+        return {
+          ...prev,
+          profiles: [...prev.profiles, newProfile],
+          privateAccounts: [...prev.privateAccounts, newPriv],
+        };
+      });
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        syncOAuthUser(data.session.user);
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        syncOAuthUser(session.user);
+      }
+    });
+
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [commitStore, isHydrated, setActiveSessionUser]);
+
   const currentUser = useMemo(() => {
     if (!currentUserId) return null;
     return store.profiles.find((p) => p.id === currentUserId) ?? null;
@@ -578,6 +703,10 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    const supabase = createSupabaseBrowserClient();
+    if (supabase) {
+      supabase.auth.signOut().catch(() => {});
+    }
     setActiveSessionUser(null);
     pushToast('info', 'Has cerrado sesión de forma segura.');
   }, [pushToast, setActiveSessionUser]);
