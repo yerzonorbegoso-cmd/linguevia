@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import {
+  createSupabaseBrowserClient,
+  isSupabaseGoogleOAuthEnabled,
+} from '@/lib/supabase/client';
 import { getPublicEnv } from '@/lib/env';
 
 export default function LoginPage() {
@@ -41,7 +44,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError(null);
     const supabase = createSupabaseBrowserClient();
-    if (supabase) {
+    if (supabase && (await isSupabaseGoogleOAuthEnabled())) {
       const { error: oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

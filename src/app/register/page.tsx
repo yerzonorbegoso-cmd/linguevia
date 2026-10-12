@@ -7,7 +7,10 @@ import { ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 import { COUNTRY_OPTIONS, INITIAL_LANGUAGES } from '@/lib/store/demo-data';
 import { calculateAgeYears, isAdultBirthDate, registerSchema } from '@/lib/security/validators';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import {
+  createSupabaseBrowserClient,
+  isSupabaseGoogleOAuthEnabled,
+} from '@/lib/supabase/client';
 import { CefrLevel } from '@/types/database';
 
 const LEARNING_LEVELS: Array<{ value: CefrLevel; label: string }> = [
@@ -112,7 +115,7 @@ export default function RegisterPage() {
     setGoogleModalError(null);
 
     const supabase = createSupabaseBrowserClient();
-    if (supabase) {
+    if (supabase && (await isSupabaseGoogleOAuthEnabled())) {
       const { error: oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

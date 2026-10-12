@@ -18,8 +18,16 @@ export interface PublicEnvConfig {
 }
 
 export function getPublicEnv(): PublicEnvConfig {
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
-  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
+  const isTestEnv = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
+  const defaultSupabaseUrl = isTestEnv ? '' : 'https://yeqwclwhwjfvblihsqxv.supabase.co';
+  const defaultSupabaseAnonKey = isTestEnv
+    ? ''
+    : 'sb_publishable_tHQrkQ5L-TjZ2DfQIBXsNg_Is5V3-90';
+
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? defaultSupabaseUrl).trim();
+  const supabaseAnonKey = (
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? defaultSupabaseAnonKey
+  ).trim();
   const livekitUrl = (process.env.NEXT_PUBLIC_LIVEKIT_URL ?? '').trim();
   const adsenseClientId = (process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ?? '').trim();
 
