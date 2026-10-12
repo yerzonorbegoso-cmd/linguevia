@@ -85,18 +85,15 @@ export default function RegisterPage() {
     router.push('/onboarding');
   };
 
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
+  const [googleBirthDate, setGoogleBirthDate] = useState('1995-06-15');
+  const [googleModalError, setGoogleModalError] = useState<string | null>(null);
+
   const handleGoogleSignup = async () => {
     setError(null);
-
-    if (birthDate && !isAdultBirthDate(birthDate)) {
-      const calculated = calculateAgeYears(birthDate);
-      setError(
-        calculated >= 0 && calculated < 18
-          ? `Acceso restringido: tienes ${calculated} años. Linguevia es exclusivamente para mayores de 18 años.`
-          : 'Introduce una fecha de nacimiento válida (mayor de 18 años).'
-      );
-      return;
-    }
+    setGoogleModalError(null);
 
     const supabase = createSupabaseBrowserClient();
     if (supabase) {
@@ -112,20 +109,50 @@ export default function RegisterPage() {
       return;
     }
 
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const effectiveName = displayName.trim() || 'Usuario Google';
-    const effectiveUser =
-      username.trim().replace(/[^a-zA-Z0-9_.-]/g, '') || `google_${randomSuffix}`;
-    const effectiveEmail = email.trim() || `${effectiveUser}@gmail.com`;
-    const effectiveBirthDate =
-      birthDate && isAdultBirthDate(birthDate) ? birthDate : '1995-06-15';
+    // Pre-fill modal with any data already typed in the form
+    if (email.trim()) setGoogleEmail(email.trim());
+    if (displayName.trim()) setGoogleName(displayName.trim());
+    if (birthDate) setGoogleBirthDate(birthDate);
+    setShowGoogleModal(true);
+  };
+
+  const handleConfirmGoogleModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    setGoogleModalError(null);
+
+    const cleanGoogleEmail = googleEmail.trim().toLowerCase();
+    if (!cleanGoogleEmail || !cleanGoogleEmail.includes('@')) {
+      setGoogleModalError('Introduce tu dirección de correo de Google (ej. tucorreo@gmail.com).');
+      return;
+    }
+
+    if (!googleBirthDate || !isAdultBirthDate(googleBirthDate)) {
+      setGoogleModalError(
+        'Debes indicar una fecha de nacimiento válida para mayores de 18 años.'
+      );
+      return;
+    }
+
+    const derivedName =
+      googleName.trim() ||
+      cleanGoogleEmail
+        .split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+
+    const baseUsername = (username.trim() || cleanGoogleEmail.split('@')[0])
+      .toLowerCase()
+      .replace(/[^a-z0-9_.-]/g, '_')
+      .slice(0, 24);
+    const finalUsername =
+      baseUsername.length >= 3 ? baseUsername : `${baseUsername}_${Math.floor(100 + Math.random() * 900)}`;
 
     const res = registerAccount({
-      email: effectiveEmail,
+      email: cleanGoogleEmail,
       password: `GAuth_${Date.now()}!`,
-      displayName: effectiveName,
-      username: effectiveUser,
-      birthDate: effectiveBirthDate,
+      displayName: derivedName,
+      username: finalUsername,
+      birthDate: googleBirthDate,
       countryCode,
       timezone,
       confirmAdult: true,
@@ -134,15 +161,111 @@ export default function RegisterPage() {
     });
 
     if (!res.ok) {
-      setError(res.error || 'Error con registro Google.');
+      setGoogleModalError(res.error || 'No se pudo completar el registro con Google.');
       return;
     }
 
+    setShowGoogleModal(false);
     router.push('/onboarding');
   };
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm text-blue-600">
+                  G
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Continuar con tu cuenta de Google
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Ingresa tu correo de Google para vincular tu perfil en Linguevia
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(false)}
+                className="text-xs text-slate-400 hover:text-slate-700 px-2 py-1"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            {googleModalError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                {googleModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmGoogleModal} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Correo electrónico de Google (Gmail)
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  placeholder="tucorreo@gmail.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Tu nombre visible
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
+                  placeholder="Ej. Yerzon Orbegoso"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Fecha de nacimiento (Verificación +18)
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={googleBirthDate}
+                  onChange={(e) => setGoogleBirthDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
+                >
+                  Continuar con Google
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">

@@ -363,18 +363,30 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       }
 
       const cleanEmail = input.email.trim().toLowerCase();
-      const cleanUsername = input.username.trim().toLowerCase();
+      const isGoogle = input.provider === 'google';
+      let cleanUsername = input.username.trim().toLowerCase();
 
-      if (store.privateAccounts.some((a) => a.email.toLowerCase() === cleanEmail)) {
+      const existingPrivate = store.privateAccounts.find(
+        (a) => a.email.toLowerCase() === cleanEmail
+      );
+      if (existingPrivate) {
+        if (isGoogle) {
+          setActiveSessionUser(existingPrivate.user_id);
+          pushToast('success', 'Sesión iniciada con tu cuenta de Google.');
+          return { ok: true, requiresVerification: false };
+        }
         return { ok: false, error: 'Ya existe una cuenta registrada con este correo electrónico.' };
       }
       if (store.profiles.some((p) => p.username.toLowerCase() === cleanUsername)) {
-        return { ok: false, error: 'Ese nombre de usuario ya está en uso. Elige otro.' };
+        if (isGoogle) {
+          cleanUsername = `${cleanUsername}_${Math.floor(100 + Math.random() * 900)}`;
+        } else {
+          return { ok: false, error: 'Ese nombre de usuario ya está en uso. Elige otro.' };
+        }
       }
 
       const newUserId = `user-${Date.now()}`;
       const nowIso = new Date().toISOString();
-      const isGoogle = input.provider === 'google';
 
       const newProfile: UserProfile = {
         id: newUserId,

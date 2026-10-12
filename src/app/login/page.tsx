@@ -10,13 +10,17 @@ import { getPublicEnv } from '@/lib/env';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithEmail, loginWithDemoAccount } = usePlatform();
+  const { loginWithEmail, loginWithDemoAccount, registerAccount } = usePlatform();
   const env = getPublicEnv();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,18 +54,129 @@ export default function LoginPage() {
       return;
     }
 
-    if (env.demoMode) {
-      loginWithDemoAccount('demo-user-elena');
-      router.push('/dashboard');
-    } else {
-      setError(
-        'Para usar el inicio de sesión con Google en producción, configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local.'
-      );
+    if (email.trim()) setGoogleEmail(email.trim());
+    setShowGoogleModal(true);
+  };
+
+  const handleConfirmGoogleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = googleEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Introduce un correo electrónico de Google válido.');
+      return;
     }
+
+    const derivedName =
+      googleName.trim() ||
+      cleanEmail
+        .split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+
+    const baseUser = cleanEmail
+      .split('@')[0]
+      .replace(/[^a-z0-9_.-]/g, '_')
+      .slice(0, 24);
+
+    const res = registerAccount({
+      email: cleanEmail,
+      password: `GAuth_${Date.now()}!`,
+      displayName: derivedName,
+      username: baseUser.length >= 3 ? baseUser : `${baseUser}_g`,
+      birthDate: '1995-06-15',
+      countryCode: 'ES',
+      timezone: 'Europe/Madrid',
+      confirmAdult: true,
+      acceptTerms: true,
+      provider: 'google',
+    });
+
+    if (!res.ok) {
+      setError(res.error || 'No se pudo iniciar sesión con Google.');
+      return;
+    }
+
+    setShowGoogleModal(false);
+    router.push('/dashboard');
   };
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm text-blue-600">
+                  G
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Iniciar sesión con Google
+                  </h2>
+                  <p className="text-[11px] text-slate-500">
+                    Ingresa tu correo de Google para entrar a Linguevia
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(false)}
+                className="text-xs text-slate-400 hover:text-slate-700 px-2 py-1"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmGoogleLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Tu correo de Google (Gmail)
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  placeholder="tucorreo@gmail.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Tu nombre visible (si es tu primera vez)
+                </label>
+                <input
+                  type="text"
+                  value={googleName}
+                  onChange={(e) => setGoogleName(e.target.value)}
+                  placeholder="Ej. Yerzon Orbegoso"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
+                >
+                  Continuar con Google
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">
