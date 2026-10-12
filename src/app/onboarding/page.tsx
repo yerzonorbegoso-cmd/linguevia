@@ -28,8 +28,8 @@ export default function OnboardingPage() {
 
   const [bio, setBio] = useState('');
   const [learningGoals, setLearningGoals] = useState('');
-  const [countryCode, setCountryCode] = useState('ES');
-  const [timezone, setTimezone] = useState('Europe/Madrid');
+  const [countryCode, setCountryCode] = useState('PE');
+  const [timezone, setTimezone] = useState('America/Lima');
   const [languages, setLanguages] = useState<DraftLang[]>([
     { language_code: 'es', relation_type: 'native', proficiency_level: 'native', target_goal: 'Enseñar conversación y cultura' },
     { language_code: 'en', relation_type: 'learning', proficiency_level: 'B1', target_goal: 'Mejorar fluidez oral' },
@@ -49,8 +49,8 @@ export default function OnboardingPage() {
     queueMicrotask(() => {
       setBio(currentUser.bio || '');
       setLearningGoals(currentUser.learning_goals || '');
-      setCountryCode(currentUser.country_code || 'ES');
-      setTimezone(currentUser.timezone || 'Europe/Madrid');
+      setCountryCode(currentUser.country_code || 'PE');
+      setTimezone(currentUser.timezone || 'America/Lima');
       if (currentUser.languages.length > 0) {
         setLanguages(
           currentUser.languages.map((l) => ({

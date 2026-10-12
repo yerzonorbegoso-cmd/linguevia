@@ -5,9 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
-import { COUNTRY_OPTIONS } from '@/lib/store/demo-data';
+import { COUNTRY_OPTIONS, INITIAL_LANGUAGES } from '@/lib/store/demo-data';
 import { calculateAgeYears, isAdultBirthDate, registerSchema } from '@/lib/security/validators';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { CefrLevel } from '@/types/database';
+
+const LEARNING_LEVELS: Array<{ value: CefrLevel; label: string }> = [
+  { value: 'A1', label: 'A1 - Principiante' },
+  { value: 'A2', label: 'A2 - Básico' },
+  { value: 'B1', label: 'B1 - Intermedio' },
+  { value: 'B2', label: 'B2 - Intermedio Alto' },
+  { value: 'C1', label: 'C1 - Avanzado' },
+  { value: 'C2', label: 'C2 - Dominio' },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,8 +28,11 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [countryCode, setCountryCode] = useState('ES');
-  const [timezone, setTimezone] = useState('Europe/Madrid');
+  const [countryCode, setCountryCode] = useState('PE');
+  const [timezone, setTimezone] = useState('America/Lima');
+  const [nativeLanguageCode, setNativeLanguageCode] = useState('es');
+  const [learningLanguageCode, setLearningLanguageCode] = useState('en');
+  const [learningLevel, setLearningLevel] = useState<CefrLevel>('B1');
   const [confirmAdult, setConfirmAdult] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +88,9 @@ export default function RegisterPage() {
       confirmAdult,
       acceptTerms,
       provider: 'email',
+      nativeLanguageCode,
+      learningLanguageCode,
+      learningLevel,
     });
 
     if (!res.ok) {
@@ -158,6 +174,9 @@ export default function RegisterPage() {
       confirmAdult: true,
       acceptTerms: true,
       provider: 'google',
+      nativeLanguageCode,
+      learningLanguageCode,
+      learningLevel,
     });
 
     if (!res.ok) {
@@ -172,8 +191,8 @@ export default function RegisterPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
       {showGoogleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-5">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm text-blue-600">
@@ -184,7 +203,7 @@ export default function RegisterPage() {
                     Continuar con tu cuenta de Google
                   </h2>
                   <p className="text-[11px] text-slate-500">
-                    Ingresa tu correo de Google para vincular tu perfil en Linguevia
+                    Ingresa tu correo de Google y tus preferencias de idioma
                   </p>
                 </div>
               </div>
@@ -203,8 +222,8 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <form onSubmit={handleConfirmGoogleModal} className="space-y-4">
-              <div className="space-y-1.5">
+            <form onSubmit={handleConfirmGoogleModal} className="space-y-3.5">
+              <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-700">
                   Correo electrónico de Google (Gmail)
                 </label>
@@ -215,35 +234,112 @@ export default function RegisterPage() {
                   value={googleEmail}
                   onChange={(e) => setGoogleEmail(e.target.value)}
                   placeholder="tucorreo@gmail.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Tu nombre visible
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={googleName}
-                  onChange={(e) => setGoogleName(e.target.value)}
-                  placeholder="Ej. Yerzon Orbegoso"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Tu nombre visible
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={googleName}
+                    onChange={(e) => setGoogleName(e.target.value)}
+                    placeholder="Ej. Yerzon Orbegoso"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    País
+                  </label>
+                  <select
+                    value={countryCode}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
+                  >
+                    {COUNTRY_OPTIONS.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Fecha de nacimiento (Verificación +18)
+                  Fecha de nacimiento (+18)
                 </label>
                 <input
                   type="date"
                   required
                   value={googleBirthDate}
                   onChange={(e) => setGoogleBirthDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
+              </div>
+
+              <div className="rounded-2xl bg-teal-50/60 border border-teal-100 p-3 space-y-2.5">
+                <div className="text-xs font-bold text-teal-900">
+                  Preferencias de idiomas (para que te encuentren otros compañeros)
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      Idioma que hablo (Nativo)
+                    </label>
+                    <select
+                      value={nativeLanguageCode}
+                      onChange={(e) => setNativeLanguageCode(e.target.value)}
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                    >
+                      {INITIAL_LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag_emoji} {l.name_es}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      Idioma que quiero aprender
+                    </label>
+                    <select
+                      value={learningLanguageCode}
+                      onChange={(e) => setLearningLanguageCode(e.target.value)}
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                    >
+                      {INITIAL_LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag_emoji} {l.name_es}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-slate-700">
+                    Mi nivel actual en el idioma que quiero aprender
+                  </label>
+                  <select
+                    value={learningLevel}
+                    onChange={(e) => setLearningLevel(e.target.value as CefrLevel)}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                  >
+                    {LEARNING_LEVELS.map((lvl) => (
+                      <option key={lvl.value} value={lvl.value}>
+                        {lvl.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -258,7 +354,7 @@ export default function RegisterPage() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
                 >
-                  Continuar con Google
+                  Continuar y completar perfil
                 </button>
               </div>
             </form>
@@ -302,7 +398,7 @@ export default function RegisterPage() {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Ej. Mateo Rivera"
+                placeholder="Ej. Yerzon Orbegoso"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
               />
             </div>
@@ -317,7 +413,7 @@ export default function RegisterPage() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="mateo_rivera"
+                placeholder="yerzon_peru"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
               />
             </div>
@@ -401,6 +497,65 @@ export default function RegisterPage() {
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm"
               />
+            </div>
+          </div>
+
+          {/* Language Preferences directly in Registration */}
+          <div className="rounded-2xl bg-teal-50/60 border border-teal-100 p-4 space-y-3">
+            <div className="text-xs font-bold text-teal-900">
+              Tus preferencias de aprendizaje (para que otros compañeros te encuentren)
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Idioma nativo que hablo
+                </label>
+                <select
+                  value={nativeLanguageCode}
+                  onChange={(e) => setNativeLanguageCode(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                >
+                  {INITIAL_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag_emoji} {l.name_es}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Idioma que quiero aprender
+                </label>
+                <select
+                  value={learningLanguageCode}
+                  onChange={(e) => setLearningLanguageCode(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                >
+                  {INITIAL_LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag_emoji} {l.name_es}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Mi nivel actual
+                </label>
+                <select
+                  value={learningLevel}
+                  onChange={(e) => setLearningLevel(e.target.value as CefrLevel)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                >
+                  {LEARNING_LEVELS.map((lvl) => (
+                    <option key={lvl.value} value={lvl.value}>
+                      {lvl.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

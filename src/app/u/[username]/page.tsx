@@ -133,6 +133,15 @@ export default function PublicProfilePage({
             </div>
           </div>
 
+          {isOwnProfile && (
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs"
+            >
+              <span>Editar mis idiomas y preferencias de aprendizaje</span>
+            </Link>
+          )}
+
           {!isOwnProfile && currentUser && (
             <div className="flex flex-wrap items-center gap-2">
               <button

@@ -61,6 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/explore', label: 'Explorar', icon: Compass },
     { href: '/messages', label: 'Mensajes', icon: MessageSquare },
     { href: '/learning', label: 'Aprendizaje', icon: BookOpen },
+    { href: '/onboarding', label: 'Mis Idiomas', icon: Globe2 },
     { href: '/settings', label: 'Ajustes', icon: Settings },
   ];
 

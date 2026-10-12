@@ -59,17 +59,18 @@ export const INITIAL_INTERESTS: InterestCatalogItem[] = [
 ];
 
 export const COUNTRY_OPTIONS = [
-  { code: 'ES', name: 'España', defaultTimezone: 'Europe/Madrid' },
-  { code: 'MX', name: 'México', defaultTimezone: 'America/Mexico_City' },
-  { code: 'AR', name: 'Argentina', defaultTimezone: 'America/Argentina/Buenos_Aires' },
-  { code: 'CO', name: 'Colombia', defaultTimezone: 'America/Bogota' },
   { code: 'PE', name: 'Perú', defaultTimezone: 'America/Lima' },
+  { code: 'MX', name: 'México', defaultTimezone: 'America/Mexico_City' },
+  { code: 'CO', name: 'Colombia', defaultTimezone: 'America/Bogota' },
+  { code: 'AR', name: 'Argentina', defaultTimezone: 'America/Argentina/Buenos_Aires' },
   { code: 'CL', name: 'Chile', defaultTimezone: 'America/Santiago' },
+  { code: 'EC', name: 'Ecuador', defaultTimezone: 'America/Guayaquil' },
+  { code: 'ES', name: 'España', defaultTimezone: 'Europe/Madrid' },
   { code: 'US', name: 'Estados Unidos', defaultTimezone: 'America/New_York' },
+  { code: 'BR', name: 'Brasil', defaultTimezone: 'America/Sao_Paulo' },
   { code: 'GB', name: 'Reino Unido', defaultTimezone: 'Europe/London' },
   { code: 'FR', name: 'Francia', defaultTimezone: 'Europe/Paris' },
   { code: 'DE', name: 'Alemania', defaultTimezone: 'Europe/Berlin' },
-  { code: 'BR', name: 'Brasil', defaultTimezone: 'America/Sao_Paulo' },
   { code: 'IT', name: 'Italia', defaultTimezone: 'Europe/Rome' },
   { code: 'JP', name: 'Japón', defaultTimezone: 'Asia/Tokyo' },
   { code: 'KR', name: 'Corea del Sur', defaultTimezone: 'Asia/Seoul' },

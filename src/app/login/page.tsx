@@ -84,8 +84,8 @@ export default function LoginPage() {
       displayName: derivedName,
       username: baseUser.length >= 3 ? baseUser : `${baseUser}_g`,
       birthDate: '1995-06-15',
-      countryCode: 'ES',
-      timezone: 'Europe/Madrid',
+      countryCode: 'PE',
+      timezone: 'America/Lima',
       confirmAdult: true,
       acceptTerms: true,
       provider: 'google',
@@ -97,7 +97,7 @@ export default function LoginPage() {
     }
 
     setShowGoogleModal(false);
-    router.push('/dashboard');
+    router.push(res.onboardingCompleted ? '/dashboard' : '/onboarding');
   };
 
   return (

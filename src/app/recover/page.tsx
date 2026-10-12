@@ -2,39 +2,44 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { KeyRound, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 
 export default function RecoverPasswordPage() {
-  const { requestPasswordRecovery, resetPasswordWithToken } = usePlatform();
+  const router = useRouter();
+  const { resetPasswordWithToken } = usePlatform();
 
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState<'request' | 'reset' | 'done'>('request');
   const [newPassword, setNewPassword] = useState('');
-  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRequest = (e: React.FormEvent) => {
+  const handleDirectReset = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const res = requestPasswordRecovery(email);
-    if (!res.ok) {
-      setError(res.message);
+
+    if (newPassword.length < 8) {
+      setError('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
-    setNotice(res.message);
-    setStep('reset');
-  };
 
-  const handleReset = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+    if (newPassword !== confirmPassword) {
+      setError('Las contraseñas no coinciden. Verifícalas por favor.');
+      return;
+    }
+
     const res = resetPasswordWithToken(email, newPassword);
     if (!res.ok) {
-      setError(res.error || 'No se pudo actualizar la contraseña.');
+      setError(res.error || 'No se encontró ninguna cuenta asociada a ese correo.');
       return;
     }
-    setStep('done');
+
+    setDone(true);
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 1200);
   };
 
   return (
@@ -45,9 +50,10 @@ export default function RecoverPasswordPage() {
         </div>
 
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900">Recuperar contraseña</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Restablecer contraseña</h1>
           <p className="text-xs text-slate-500">
-            Restablece el acceso a tu cuenta de forma segura sin exponer tus datos.
+            Ingresa tu correo registrado y elige tu nueva contraseña directamente (sin esperar
+            códigos por correo).
           </p>
         </div>
 
@@ -58,14 +64,8 @@ export default function RecoverPasswordPage() {
           </div>
         )}
 
-        {notice && step === 'reset' && (
-          <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 text-xs text-teal-900">
-            {notice}
-          </div>
-        )}
-
-        {step === 'request' && (
-          <form onSubmit={handleRequest} className="space-y-4">
+        {!done ? (
+          <form onSubmit={handleDirectReset} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="rec-email" className="block text-xs font-semibold text-slate-700">
                 Correo electrónico de tu cuenta
@@ -76,22 +76,11 @@ export default function RecoverPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="elena.demo@linguevia.test"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
+                placeholder="tucorreo@ejemplo.com"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm"
-            >
-              Enviar enlace de recuperación
-            </button>
-          </form>
-        )}
-
-        {step === 'reset' && (
-          <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="rec-new-pass" className="block text-xs font-semibold text-slate-700">
                 Nueva contraseña (mín. 8 caracteres)
@@ -103,7 +92,27 @@ export default function RecoverPasswordPage() {
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="rec-confirm-pass"
+                className="block text-xs font-semibold text-slate-700"
+              >
+                Confirmar nueva contraseña
+              </label>
+              <input
+                id="rec-confirm-pass"
+                type="password"
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
@@ -111,22 +120,22 @@ export default function RecoverPasswordPage() {
               type="submit"
               className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm"
             >
-              Confirmar nueva contraseña
+              Actualizar contraseña y entrar
             </button>
           </form>
-        )}
-
-        {step === 'done' && (
+        ) : (
           <div className="space-y-4">
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-xs text-emerald-900 flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.</span>
+              <span>
+                ¡Tu contraseña ha sido actualizada e iniciaste sesión! Redirigiendo a tu panel...
+              </span>
             </div>
             <Link
-              href="/login"
+              href="/dashboard"
               className="block text-center w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm"
             >
-              Ir a Iniciar sesión
+              Ir a mi panel ahora
             </Link>
           </div>
         )}
