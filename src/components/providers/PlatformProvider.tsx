@@ -86,7 +86,11 @@ interface PlatformContextValue {
   };
   verifyCurrentEmail: (code: string) => { ok: boolean; error?: string };
   requestPasswordRecovery: (email: string) => { ok: boolean; message: string };
-  resetPasswordWithToken: (email: string, newPassword: string) => { ok: boolean; error?: string };
+  resetPasswordWithToken: (
+    email: string,
+    newPassword: string,
+    birthDateVerification?: string
+  ) => { ok: boolean; error?: string };
   logout: () => void;
   completeOnboardingAndSaveProfile: (input: OnboardingUpdateInput) => { ok: boolean; error?: string };
   updateConsentPreferences: (prefs: {
@@ -542,14 +546,22 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetPasswordWithToken = useCallback(
-    (email: string, newPassword: string) => {
+    (email: string, newPassword: string, birthDateVerification?: string) => {
       if (newPassword.length < 8) {
         return { ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' };
       }
       const clean = email.trim().toLowerCase();
       const matched = store.privateAccounts.find((a) => a.email.toLowerCase() === clean);
       if (!matched) {
-        return { ok: false, error: 'No se encontró ninguna cuenta asociada a ese correo.' };
+        return { ok: false, error: 'Los datos de verificación no coinciden con ninguna cuenta.' };
+      }
+
+      if (birthDateVerification !== undefined && matched.birth_date !== birthDateVerification.trim()) {
+        return {
+          ok: false,
+          error:
+            'Verificación fallida: la fecha de nacimiento privada no coincide con la registrada en esta cuenta.',
+        };
       }
 
       commitStore((prev) => ({
@@ -559,7 +571,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         ),
       }));
       setActiveSessionUser(matched.user_id);
-      pushToast('success', 'Contraseña actualizada. Has iniciado sesión.');
+      pushToast('success', 'Identidad verificada y contraseña actualizada.');
       return { ok: true };
     },
     [commitStore, pushToast, setActiveSessionUser, store.privateAccounts]
