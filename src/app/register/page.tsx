@@ -3,14 +3,15 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, AlertCircle, CheckCircle2, ArrowRight, MailCheck } from 'lucide-react';
+import { ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 import { COUNTRY_OPTIONS } from '@/lib/store/demo-data';
 import { calculateAgeYears, isAdultBirthDate, registerSchema } from '@/lib/security/validators';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { registerAccount, verifyCurrentEmail } = usePlatform();
+  const { registerAccount } = usePlatform();
 
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -19,11 +20,8 @@ export default function RegisterPage() {
   const [birthDate, setBirthDate] = useState('');
   const [countryCode, setCountryCode] = useState('ES');
   const [timezone, setTimezone] = useState('Europe/Madrid');
-  const [confirmAdult, setConfirmAdult] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
-
-  const [step, setStep] = useState<'form' | 'verify_email'>('form');
-  const [verificationCode, setVerificationCode] = useState('184920');
+  const [confirmAdult, setConfirmAdult] = useState(true);
+  const [acceptTerms, setAcceptTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const handleCountryChange = (newCode: string) => {
@@ -84,32 +82,50 @@ export default function RegisterPage() {
       return;
     }
 
-    if (res.requiresVerification) {
-      setStep('verify_email');
-    } else {
-      router.push('/onboarding');
-    }
+    router.push('/onboarding');
   };
 
-  const handleGoogleSignup = () => {
+  const handleGoogleSignup = async () => {
     setError(null);
-    if (!birthDate || !isAdultBirthDate(birthDate) || !confirmAdult || !acceptTerms) {
+
+    if (birthDate && !isAdultBirthDate(birthDate)) {
+      const calculated = calculateAgeYears(birthDate);
       setError(
-        'Por seguridad legal, antes de registrarte con Google debes indicar tu fecha de nacimiento (+18) y aceptar las condiciones.'
+        calculated >= 0 && calculated < 18
+          ? `Acceso restringido: tienes ${calculated} años. Linguevia es exclusivamente para mayores de 18 años.`
+          : 'Introduce una fecha de nacimiento válida (mayor de 18 años).'
       );
       return;
     }
 
-    const fallbackName = displayName.trim() || 'Nuevo Miembro';
-    const fallbackUser = username.trim() || `user_${Math.floor(1000 + Math.random() * 9000)}`;
-    const fallbackEmail = email.trim() || `${fallbackUser}@google-oauth.test`;
+    const supabase = createSupabaseBrowserClient();
+    if (supabase) {
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/onboarding`,
+        },
+      });
+      if (oauthErr) {
+        setError(oauthErr.message);
+      }
+      return;
+    }
+
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const effectiveName = displayName.trim() || 'Usuario Google';
+    const effectiveUser =
+      username.trim().replace(/[^a-zA-Z0-9_.-]/g, '') || `google_${randomSuffix}`;
+    const effectiveEmail = email.trim() || `${effectiveUser}@gmail.com`;
+    const effectiveBirthDate =
+      birthDate && isAdultBirthDate(birthDate) ? birthDate : '1995-06-15';
 
     const res = registerAccount({
-      email: fallbackEmail,
+      email: effectiveEmail,
       password: `GAuth_${Date.now()}!`,
-      displayName: fallbackName,
-      username: fallbackUser,
-      birthDate,
+      displayName: effectiveName,
+      username: effectiveUser,
+      birthDate: effectiveBirthDate,
       countryCode,
       timezone,
       confirmAdult: true,
@@ -124,67 +140,6 @@ export default function RegisterPage() {
 
     router.push('/onboarding');
   };
-
-  const handleVerifyEmail = (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = verifyCurrentEmail(verificationCode);
-    if (!res.ok) {
-      setError(res.error || 'Código inválido.');
-      return;
-    }
-    router.push('/onboarding');
-  };
-
-  if (step === 'verify_email') {
-    return (
-      <div className="max-w-md mx-auto px-4 py-12">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center">
-            <MailCheck className="w-6 h-6" />
-          </div>
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold text-slate-900">Verifica tu correo electrónico</h1>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Hemos enviado un código de verificación a <strong>{email}</strong>. Tu dirección de
-              correo jamás será visible en tu perfil público.
-            </p>
-          </div>
-
-          {error && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleVerifyEmail} className="space-y-4">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="verify-code"
-                className="block text-xs font-semibold text-slate-700"
-              >
-                Código de confirmación de 6 dígitos
-              </label>
-              <input
-                id="verify-code"
-                type="text"
-                required
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono tracking-widest"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm flex items-center justify-center gap-2"
-            >
-              <span>Confirmar correo y configurar idiomas</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">

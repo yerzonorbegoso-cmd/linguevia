@@ -407,7 +407,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       const newPrivate: PrivateAccountRecord = {
         user_id: newUserId,
         email: cleanEmail,
-        email_verified: isGoogle, // Google OAuth comes pre-verified; email requires confirmation code
+        email_verified: true,
         birth_date: input.birthDate,
         auth_provider: input.provider ?? 'email',
         password_hash: input.password,
@@ -440,9 +440,9 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         'success',
         isGoogle
           ? 'Cuenta creada con Google. Completa tu perfil lingüístico.'
-          : 'Cuenta creada. Verifica tu correo y configura tus idiomas.'
+          : 'Cuenta creada correctamente. Completa tu perfil de idiomas.'
       );
-      return { ok: true, requiresVerification: !isGoogle };
+      return { ok: true, requiresVerification: false };
     },
     [commitStore, pushToast, setActiveSessionUser, store.privateAccounts, store.profiles]
   );
