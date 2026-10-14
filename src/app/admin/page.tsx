@@ -35,12 +35,23 @@ export default function AdminDashboardPage() {
     adminUpdatePlatformSettings,
     adminResetUserPassword,
     adminGetUserAccountDetails,
+    adminPromoteCurrentUser,
     loginWithDemoAccount,
   } = usePlatform();
 
   const [activeTab, setActiveTab] = useState<
     'reports' | 'users' | 'catalog' | 'ads_and_quotas' | 'audit'
   >('reports');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'users' || tab === 'reports' || tab === 'catalog' || tab === 'ads_and_quotas' || tab === 'audit') {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
   const [adminNotesMap, setAdminNotesMap] = useState<Record<string, string>>({});
 
   // User management & credentials recovery state
@@ -94,19 +105,30 @@ export default function AdminDashboardPage() {
             privilegios administrativos.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
+            {currentUser && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await adminPromoteCurrentUser();
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs"
+              >
+                Habilitar permisos de Administrador para @{currentUser.username}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => loginWithDemoAccount('demo-user-elena')}
+              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
+            >
+              Cambiar a Elena (Rol Admin Demo)
+            </button>
             <Link
               href="/dashboard"
               className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold"
             >
               Volver a mi panel
             </Link>
-            <button
-              type="button"
-              onClick={() => loginWithDemoAccount('demo-user-elena')}
-              className="px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-semibold"
-            >
-              Cambiar a Elena (Rol Admin Demo)
-            </button>
           </div>
         </div>
       </div>

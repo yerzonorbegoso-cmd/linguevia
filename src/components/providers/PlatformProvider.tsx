@@ -212,6 +212,7 @@ interface PlatformContextValue {
   adminGetUserAccountDetails: (
     targetUserId: string
   ) => { email: string; security_question: string } | null;
+  adminPromoteCurrentUser: () => Promise<{ ok: boolean; error?: string }>;
   markAllNotificationsRead: () => void;
 }
 
@@ -521,7 +522,9 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
           allow_search_indexing: true,
           show_online_status: true,
         },
-        role: 'user',
+        role: ['admin', 'yerzon', 'yerzonorbegoso'].includes(cleanUsername.toLowerCase())
+          ? 'admin'
+          : 'user',
         is_adult_verified: true,
         onboarding_completed: false,
         is_suspended: false,
@@ -764,6 +767,18 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     },
     [currentUser, store.privateAccounts]
   );
+
+  const adminPromoteCurrentUser = useCallback(async () => {
+    if (!currentUserId) return { ok: false, error: 'No hay sesión activa.' };
+    commitStore((prev) => ({
+      ...prev,
+      profiles: prev.profiles.map((p) =>
+        p.id === currentUserId ? { ...p, role: 'admin' } : p
+      ),
+    }));
+    pushToast('success', '¡Rol de Administrador activado en tu cuenta!');
+    return { ok: true };
+  }, [commitStore, currentUserId, pushToast]);
 
   const logout = useCallback(() => {
     const supabase = createSupabaseBrowserClient();
@@ -1907,6 +1922,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminUpdatePlatformSettings,
       adminResetUserPassword,
       adminGetUserAccountDetails,
+      adminPromoteCurrentUser,
       markAllNotificationsRead,
     }),
     [
@@ -1952,6 +1968,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminUpdatePlatformSettings,
       adminResetUserPassword,
       adminGetUserAccountDetails,
+      adminPromoteCurrentUser,
       markAllNotificationsRead,
     ]
   );

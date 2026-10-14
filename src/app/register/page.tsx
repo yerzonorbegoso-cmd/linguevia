@@ -24,7 +24,6 @@ export default function RegisterPage() {
 
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedQuestion, setSelectedQuestion] = useState(DEFAULT_SECURITY_QUESTIONS[0]);
@@ -100,7 +99,7 @@ export default function RegisterPage() {
     }
 
     const parsed = registerSchema.safeParse({
-      email: email.trim(),
+      email: '',
       password,
       displayName: displayName.trim() || cleanUser,
       username: cleanUser,
@@ -122,7 +121,7 @@ export default function RegisterPage() {
     const res = registerAccount({
       username: cleanUser,
       displayName: displayName.trim() || cleanUser,
-      email: email.trim(),
+      email: '',
       password,
       securityQuestion: finalSecurityQuestion,
       securityAnswer: securityAnswer.trim(),
@@ -214,29 +213,6 @@ export default function RegisterPage() {
                 El nombre con el que te verán otros compañeros.
               </p>
             </div>
-          </div>
-
-          {/* CORREO OPCIONAL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-700">
-                Correo electrónico
-              </label>
-              <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                Opcional (no obligatorio)
-              </span>
-            </div>
-            <input
-              id="reg-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@correo.com (opcional)"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-            <p className="text-[11px] text-slate-500">
-              No es necesario para registrarte. Solo agrégalo si deseas vincular un correo a tu cuenta.
-            </p>
           </div>
 
           {/* CONTRASEÑA Y CONFIRMACIÓN */}
