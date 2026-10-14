@@ -248,6 +248,18 @@ export interface AdminAuditLog {
   created_at: string;
 }
 
+export interface PasswordResetRequest {
+  id: string;
+  username: string;
+  contact_email: string;
+  notes?: string;
+  status: 'pending' | 'resolved';
+  temp_password?: string;
+  created_at: string;
+  resolved_at?: string;
+  admin_notes?: string;
+}
+
 export interface PlatformSettingsState {
   ads_enabled: boolean;
   ads_require_consent: boolean;

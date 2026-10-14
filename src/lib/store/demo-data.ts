@@ -8,6 +8,7 @@ import {
   InterestCatalogItem,
   LanguageCatalogItem,
   MessageOrProfileReport,
+  PasswordResetRequest,
   PlatformSettingsState,
   PrivateAccountRecord,
   SavedVocabularyItem,
@@ -31,6 +32,7 @@ export interface PlatformDataStore {
   notifications: AppNotification[];
   vocabulary: SavedVocabularyItem[];
   auditLogs: AdminAuditLog[];
+  passwordResetRequests: PasswordResetRequest[];
   settings: PlatformSettingsState;
 }
 
@@ -115,6 +117,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
       notifications: [],
       vocabulary: [],
       auditLogs: [],
+      passwordResetRequests: [],
       settings: defaultSettings,
     };
   }
@@ -539,6 +542,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
     notifications,
     vocabulary,
     auditLogs,
+    passwordResetRequests: [],
     settings: defaultSettings,
   };
 }

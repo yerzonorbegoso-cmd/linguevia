@@ -12,6 +12,8 @@ import {
   ConversationMode,
   ConversationRequest,
   GrammarCorrectionData,
+  MessageOrProfileReport,
+  PasswordResetRequest,
   PlatformSettingsState,
   PrivateAccountRecord,
   PrivacySettings,
@@ -221,6 +223,16 @@ interface PlatformContextValue {
     targetUserId: string
   ) => { email: string; security_question: string } | null;
   adminPromoteCurrentUser: () => Promise<{ ok: boolean; error?: string }>;
+  submitPasswordResetRequest: (params: {
+    username: string;
+    contactEmail: string;
+    notes?: string;
+  }) => { ok: boolean; error?: string; ticketId?: string };
+  adminResolvePasswordResetRequest: (
+    requestId: string,
+    tempPassword: string,
+    adminNotes?: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   markAllNotificationsRead: () => void;
 }
 
@@ -291,6 +303,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         ...hydratedStore,
         profiles: sanitizedProfiles,
         privateAccounts: sanitizedPrivates,
+        passwordResetRequests: hydratedStore.passwordResetRequests || [],
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(hydratedStore));
 
@@ -847,6 +860,103 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       error: 'Operación denegada: @Yherzon21 es la única cuenta administradora autorizada de la plataforma.',
     };
   }, []);
+
+  const submitPasswordResetRequest = useCallback(
+    (params: { username: string; contactEmail: string; notes?: string }) => {
+      const cleanUser = params.username.trim().toLowerCase().replace(/^@/, '');
+      const cleanEmail = params.contactEmail.trim().toLowerCase();
+
+      if (!cleanUser) {
+        return { ok: false, error: 'Por favor, introduce tu nombre de usuario.' };
+      }
+      if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return { ok: false, error: 'Por favor, introduce un correo electrónico de contacto válido.' };
+      }
+
+      // Check user exists
+      const targetProfile = store.profiles.find((p) => p.username.toLowerCase() === cleanUser);
+      if (!targetProfile) {
+        return {
+          ok: false,
+          error: `No se encontró ninguna cuenta registrada con el usuario @${cleanUser}.`,
+        };
+      }
+
+      const ticketId = `reset-${Date.now()}`;
+      const newRequest: PasswordResetRequest = {
+        id: ticketId,
+        username: targetProfile.username,
+        contact_email: cleanEmail,
+        notes: params.notes?.trim() || 'Solicitud de restablecimiento de contraseña olvidada.',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+
+      commitStore((prev) => ({
+        ...prev,
+        passwordResetRequests: [newRequest, ...(prev.passwordResetRequests || [])],
+      }));
+
+      pushToast(
+        'info',
+        'Solicitud enviada al Administrador. El proceso de verificación puede demorar hasta 24 horas.'
+      );
+      return { ok: true, ticketId };
+    },
+    [commitStore, pushToast, store.profiles]
+  );
+
+  const adminResolvePasswordResetRequest = useCallback(
+    async (requestId: string, tempPassword: string, adminNotes?: string) => {
+      if (
+        !currentUser ||
+        currentUser.role !== 'admin' ||
+        currentUser.username.toLowerCase() !== 'yherzon21'
+      ) {
+        return { ok: false, error: 'Operación denegada: rol administrativo oficial requerido.' };
+      }
+
+      const req = store.passwordResetRequests?.find((r) => r.id === requestId);
+      if (!req) {
+        return { ok: false, error: 'Solicitud no encontrada.' };
+      }
+
+      const targetProfile = store.profiles.find(
+        (p) => p.username.toLowerCase() === req.username.toLowerCase()
+      );
+      if (!targetProfile) {
+        return { ok: false, error: 'Usuario no encontrado en el sistema.' };
+      }
+
+      const nowIso = new Date().toISOString();
+
+      commitStore((prev) => ({
+        ...prev,
+        privateAccounts: prev.privateAccounts.map((a) =>
+          a.user_id === targetProfile.id ? { ...a, password_hash: tempPassword } : a
+        ),
+        passwordResetRequests: (prev.passwordResetRequests || []).map((r) =>
+          r.id === requestId
+            ? {
+                ...r,
+                status: 'resolved' as const,
+                temp_password: tempPassword,
+                resolved_at: nowIso,
+                admin_notes:
+                  adminNotes?.trim() || 'Contraseña restablecida y entregada por el administrador.',
+              }
+            : r
+        ),
+      }));
+
+      pushToast(
+        'success',
+        `Contraseña para @${req.username} restablecida. Ya puedes responderle por correo.`
+      );
+      return { ok: true };
+    },
+    [commitStore, currentUser, pushToast, store.passwordResetRequests, store.profiles]
+  );
 
   const logout = useCallback(() => {
     const supabase = createSupabaseBrowserClient();
@@ -2021,6 +2131,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminResetUserPassword,
       adminGetUserAccountDetails,
       adminPromoteCurrentUser,
+      submitPasswordResetRequest,
+      adminResolvePasswordResetRequest,
       markAllNotificationsRead,
     }),
     [
@@ -2067,6 +2179,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminResetUserPassword,
       adminGetUserAccountDetails,
       adminPromoteCurrentUser,
+      submitPasswordResetRequest,
+      adminResolvePasswordResetRequest,
       markAllNotificationsRead,
     ]
   );
