@@ -3,14 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertCircle, CheckCircle2, HelpCircle, Lock, User, Globe2 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
-import { COUNTRY_OPTIONS, INITIAL_LANGUAGES } from '@/lib/store/demo-data';
+import { COUNTRY_OPTIONS, INITIAL_LANGUAGES, DEFAULT_SECURITY_QUESTIONS } from '@/lib/store/demo-data';
 import { calculateAgeYears, isAdultBirthDate, registerSchema } from '@/lib/security/validators';
-import {
-  createSupabaseBrowserClient,
-  isSupabaseGoogleOAuthEnabled,
-} from '@/lib/supabase/client';
 import { CefrLevel } from '@/types/database';
 
 const LEARNING_LEVELS: Array<{ value: CefrLevel; label: string }> = [
@@ -26,10 +22,14 @@ export default function RegisterPage() {
   const router = useRouter();
   const { registerAccount } = usePlatform();
 
-  const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedQuestion, setSelectedQuestion] = useState(DEFAULT_SECURITY_QUESTIONS[0]);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [countryCode, setCountryCode] = useState('PE');
   const [timezone, setTimezone] = useState('America/Lima');
@@ -48,10 +48,47 @@ export default function RegisterPage() {
     }
   };
 
+  const finalSecurityQuestion =
+    selectedQuestion.startsWith('Otra')
+      ? customQuestion.trim()
+      : selectedQuestion.trim();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    // Validate username format
+    const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
+    if (!cleanUser || cleanUser.length < 3) {
+      setError('El nombre de usuario debe tener al menos 3 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUser)) {
+      setError('El nombre de usuario solo puede tener letras, números, guiones y puntos.');
+      return;
+    }
+
+    // Validate passwords match
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden. Por favor, escríbelas iguales.');
+      return;
+    }
+
+    // Validate security question
+    if (!finalSecurityQuestion || finalSecurityQuestion.length < 4) {
+      setError('Debes elegir o escribir una pregunta secreta de seguridad.');
+      return;
+    }
+    if (!securityAnswer.trim() || securityAnswer.trim().length < 2) {
+      setError('Debes escribir la respuesta a tu pregunta secreta de seguridad.');
+      return;
+    }
+
+    // Validate 18+
     if (!isAdultBirthDate(birthDate)) {
       const calculated = calculateAgeYears(birthDate);
       setError(
@@ -63,10 +100,12 @@ export default function RegisterPage() {
     }
 
     const parsed = registerSchema.safeParse({
-      email,
+      email: email.trim(),
       password,
-      displayName,
-      username,
+      displayName: displayName.trim() || cleanUser,
+      username: cleanUser,
+      securityQuestion: finalSecurityQuestion,
+      securityAnswer: securityAnswer.trim(),
       birthDate,
       countryCode,
       timezone,
@@ -81,16 +120,17 @@ export default function RegisterPage() {
     }
 
     const res = registerAccount({
-      email,
+      username: cleanUser,
+      displayName: displayName.trim() || cleanUser,
+      email: email.trim(),
       password,
-      displayName,
-      username,
+      securityQuestion: finalSecurityQuestion,
+      securityAnswer: securityAnswer.trim(),
       birthDate,
       countryCode,
       timezone,
       confirmAdult,
       acceptTerms,
-      provider: 'email',
       nativeLanguageCode,
       learningLanguageCode,
       learningLevel,
@@ -104,277 +144,18 @@ export default function RegisterPage() {
     router.push('/onboarding');
   };
 
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleName, setGoogleName] = useState('');
-  const [googleBirthDate, setGoogleBirthDate] = useState('1995-06-15');
-  const [googleModalError, setGoogleModalError] = useState<string | null>(null);
-
-  const handleGoogleSignup = async () => {
-    setError(null);
-    setGoogleModalError(null);
-
-    const supabase = createSupabaseBrowserClient();
-    if (supabase && (await isSupabaseGoogleOAuthEnabled())) {
-      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/onboarding`,
-        },
-      });
-      if (oauthErr) {
-        setError(oauthErr.message);
-      }
-      return;
-    }
-
-    // Pre-fill modal with any data already typed in the form
-    if (email.trim()) setGoogleEmail(email.trim());
-    if (displayName.trim()) setGoogleName(displayName.trim());
-    if (birthDate) setGoogleBirthDate(birthDate);
-    setShowGoogleModal(true);
-  };
-
-  const handleConfirmGoogleModal = (e: React.FormEvent) => {
-    e.preventDefault();
-    setGoogleModalError(null);
-
-    const cleanGoogleEmail = googleEmail.trim().toLowerCase();
-    if (!cleanGoogleEmail || !cleanGoogleEmail.includes('@')) {
-      setGoogleModalError('Introduce tu dirección de correo de Google (ej. tucorreo@gmail.com).');
-      return;
-    }
-
-    if (!googleBirthDate || !isAdultBirthDate(googleBirthDate)) {
-      setGoogleModalError(
-        'Debes indicar una fecha de nacimiento válida para mayores de 18 años.'
-      );
-      return;
-    }
-
-    const derivedName =
-      googleName.trim() ||
-      cleanGoogleEmail
-        .split('@')[0]
-        .replace(/[._-]+/g, ' ')
-        .replace(/\b\w/g, (l) => l.toUpperCase());
-
-    const baseUsername = (username.trim() || cleanGoogleEmail.split('@')[0])
-      .toLowerCase()
-      .replace(/[^a-z0-9_.-]/g, '_')
-      .slice(0, 24);
-    const finalUsername =
-      baseUsername.length >= 3 ? baseUsername : `${baseUsername}_${Math.floor(100 + Math.random() * 900)}`;
-
-    const res = registerAccount({
-      email: cleanGoogleEmail,
-      password: `GAuth_${Date.now()}!`,
-      displayName: derivedName,
-      username: finalUsername,
-      birthDate: googleBirthDate,
-      countryCode,
-      timezone,
-      confirmAdult: true,
-      acceptTerms: true,
-      provider: 'google',
-      nativeLanguageCode,
-      learningLanguageCode,
-      learningLevel,
-    });
-
-    if (!res.ok) {
-      setGoogleModalError(res.error || 'No se pudo completar el registro con Google.');
-      return;
-    }
-
-    setShowGoogleModal(false);
-    router.push('/onboarding');
-  };
-
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
-      {showGoogleModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-sm text-blue-600">
-                  G
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">
-                    Continuar con tu cuenta de Google
-                  </h2>
-                  <p className="text-[11px] text-slate-500">
-                    Ingresa tu correo de Google y tus preferencias de idioma
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGoogleModal(false)}
-                className="text-xs text-slate-400 hover:text-slate-700 px-2 py-1"
-              >
-                Cerrar
-              </button>
-            </div>
-
-            {googleModalError && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-                {googleModalError}
-              </div>
-            )}
-
-            <form onSubmit={handleConfirmGoogleModal} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Correo electrónico de Google (Gmail)
-                </label>
-                <input
-                  type="email"
-                  required
-                  autoFocus
-                  value={googleEmail}
-                  onChange={(e) => setGoogleEmail(e.target.value)}
-                  placeholder="tucorreo@gmail.com"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Tu nombre visible
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={googleName}
-                    onChange={(e) => setGoogleName(e.target.value)}
-                    placeholder="Ej. Yerzon Orbegoso"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    País
-                  </label>
-                  <select
-                    value={countryCode}
-                    onChange={(e) => handleCountryChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white"
-                  >
-                    {COUNTRY_OPTIONS.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.name} ({c.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Fecha de nacimiento (+18)
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={googleBirthDate}
-                  onChange={(e) => setGoogleBirthDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-
-              <div className="rounded-2xl bg-teal-50/60 border border-teal-100 p-3 space-y-2.5">
-                <div className="text-xs font-bold text-teal-900">
-                  Preferencias de idiomas (para que te encuentren otros compañeros)
-                </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-700">
-                      Idioma que hablo (Nativo)
-                    </label>
-                    <select
-                      value={nativeLanguageCode}
-                      onChange={(e) => setNativeLanguageCode(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
-                    >
-                      {INITIAL_LANGUAGES.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag_emoji} {l.name_es}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-semibold text-slate-700">
-                      Idioma que quiero aprender
-                    </label>
-                    <select
-                      value={learningLanguageCode}
-                      onChange={(e) => setLearningLanguageCode(e.target.value)}
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
-                    >
-                      {INITIAL_LANGUAGES.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag_emoji} {l.name_es}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-slate-700">
-                    Mi nivel actual en el idioma que quiero aprender
-                  </label>
-                  <select
-                    value={learningLevel}
-                    onChange={(e) => setLearningLevel(e.target.value as CefrLevel)}
-                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
-                  >
-                    {LEARNING_LEVELS.map((lvl) => (
-                      <option key={lvl.value} value={lvl.value}>
-                        {lvl.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowGoogleModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
-                >
-                  Continuar y completar perfil
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Registro exclusivo para mayores de 18 años</span>
+            <span>Registro seguro y privado (+18 años)</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Crea tu cuenta en Linguevia</h1>
           <p className="text-xs text-slate-500">
-            Tu correo electrónico y tu fecha de nacimiento se almacenan de forma privada y nunca se
-            publican en tu perfil público.
+            Regístrate con tu nombre de usuario único y define tu pregunta secreta para proteger tu
+            cuenta en todo momento.
           </p>
         </div>
 
@@ -382,7 +163,7 @@ export default function RegisterPage() {
           <div
             role="alert"
             data-testid="register-error"
-            className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2"
+            className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800 flex items-start gap-2"
           >
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <span>{error}</span>
@@ -390,10 +171,35 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* IDENTIFICADOR / USUARIO Y NOMBRE */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
+              <label htmlFor="reg-username" className="block text-xs font-semibold text-slate-700">
+                Nombre de usuario (@) <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-slate-400 text-sm font-semibold">
+                  @
+                </span>
+                <input
+                  id="reg-username"
+                  type="text"
+                  required
+                  autoFocus
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  placeholder="tu_usuario"
+                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Único e irrepetible. Con este usuario ingresarás a tu cuenta.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
               <label htmlFor="reg-display" className="block text-xs font-semibold text-slate-700">
-                Nombre visible
+                Nombre visible <span className="text-rose-500">*</span>
               </label>
               <input
                 id="reg-display"
@@ -401,46 +207,43 @@ export default function RegisterPage() {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Ej. Yerzon Orbegoso"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
+                placeholder="Ej. Yerzon"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="reg-username" className="block text-xs font-semibold text-slate-700">
-                Nombre de usuario (@)
-              </label>
-              <input
-                id="reg-username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="yerzon_peru"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
-              />
+              <p className="text-[11px] text-slate-500">
+                El nombre con el que te verán otros compañeros.
+              </p>
             </div>
           </div>
 
+          {/* CORREO OPCIONAL */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-700">
+                Correo electrónico
+              </label>
+              <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                Opcional (no obligatorio)
+              </span>
+            </div>
+            <input
+              id="reg-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@correo.com (opcional)"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <p className="text-[11px] text-slate-500">
+              No es necesario para registrarte. Solo agrégalo si deseas vincular un correo a tu cuenta.
+            </p>
+          </div>
+
+          {/* CONTRASEÑA Y CONFIRMACIÓN */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-700">
-                Correo electrónico (Privado)
-              </label>
-              <input
-                id="reg-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@correo.com"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <label htmlFor="reg-password" className="block text-xs font-semibold text-slate-700">
-                Contraseña (mín. 8 caracteres)
+                Contraseña <span className="text-rose-500">*</span>
               </label>
               <input
                 id="reg-password"
@@ -449,36 +252,104 @@ export default function RegisterPage() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
+                placeholder="Mínimo 8 caracteres"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="reg-confirm-pw" className="block text-xs font-semibold text-slate-700">
+                Confirmar contraseña <span className="text-rose-500">*</span>
+              </label>
+              <input
+                id="reg-confirm-pw"
+                type="password"
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repite la contraseña"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <label htmlFor="reg-birth" className="block text-xs font-semibold text-slate-700">
-                Fecha de nacimiento (+18)
-              </label>
-              <input
-                id="reg-birth"
-                type="date"
-                required
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm"
-              />
+          {/* PREGUNTA SECRETA DE SEGURIDAD */}
+          <div className="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-amber-700 shrink-0" />
+              <div className="text-xs font-bold text-amber-900">
+                Pregunta secreta de seguridad (Recuperación de contraseña)
+              </div>
             </div>
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              Esta pregunta te será solicitada si olvidas tu contraseña. Si no tienes la respuesta
+              correcta, la cuenta no podrá ser recuperada directamente.
+            </p>
 
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                Selecciona tu pregunta secreta:
+              </label>
+              <select
+                value={selectedQuestion}
+                onChange={(e) => setSelectedQuestion(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                {DEFAULT_SECURITY_QUESTIONS.map((q: string) => (
+                  <option key={q} value={q}>
+                    {q}
+                  </option>
+                ))}
+              </select>
+
+              {selectedQuestion.startsWith('Otra') && (
+                <div className="space-y-1 pt-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Escribe tu pregunta secreta personalizada:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    placeholder="Ej. ¿En qué hospital nací?"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1 pt-1">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Respuesta a tu pregunta secreta: <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                  placeholder="Escribe tu respuesta secreta"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                />
+                <p className="text-[11px] text-slate-500">
+                  No distingue entre mayúsculas y minúsculas. Recuerda bien esta respuesta.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* NACIONALIDAD Y FECHA DE NACIMIENTO */}
+          <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor="reg-country" className="block text-xs font-semibold text-slate-700">
-                País
+              <label htmlFor="reg-country" className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Globe2 className="w-3.5 h-3.5 text-teal-700" />
+                <span>Nacionalidad / País</span>
               </label>
               <select
                 id="reg-country"
                 value={countryCode}
                 onChange={(e) => handleCountryChange(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
               >
                 {COUNTRY_OPTIONS.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -489,34 +360,34 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="reg-tz" className="block text-xs font-semibold text-slate-700">
-                Zona horaria
+              <label htmlFor="reg-birth" className="block text-xs font-semibold text-slate-700">
+                Fecha de nacimiento (+18 años) <span className="text-rose-500">*</span>
               </label>
               <input
-                id="reg-tz"
-                type="text"
+                id="reg-birth"
+                type="date"
                 required
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
 
-          {/* Language Preferences directly in Registration */}
+          {/* PREFERENCIAS DE IDIOMA */}
           <div className="rounded-2xl bg-teal-50/60 border border-teal-100 p-4 space-y-3">
             <div className="text-xs font-bold text-teal-900">
-              Tus preferencias de aprendizaje (para que otros compañeros te encuentren)
+              Preferencias lingüísticas (para que otros compañeros te encuentren)
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Idioma nativo que hablo
+                  Mi idioma nativo
                 </label>
                 <select
                   value={nativeLanguageCode}
                   onChange={(e) => setNativeLanguageCode(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
                 >
                   {INITIAL_LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
@@ -528,12 +399,12 @@ export default function RegisterPage() {
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Idioma que quiero aprender
+                  Idioma que deseo aprender
                 </label>
                 <select
                   value={learningLanguageCode}
                   onChange={(e) => setLearningLanguageCode(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
                 >
                   {INITIAL_LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
@@ -550,7 +421,7 @@ export default function RegisterPage() {
                 <select
                   value={learningLevel}
                   onChange={(e) => setLearningLevel(e.target.value as CefrLevel)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
                 >
                   {LEARNING_LEVELS.map((lvl) => (
                     <option key={lvl.value} value={lvl.value}>
@@ -562,6 +433,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* CHECKBOXES DE EDAD Y TÉRMINOS */}
           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-2.5 text-xs text-slate-700">
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input
@@ -571,8 +443,8 @@ export default function RegisterPage() {
                 className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
               />
               <span>
-                <strong>Confirmo que tengo 18 años o más.</strong> Entiendo que las cuentas de
-                menores de edad son bloqueadas y eliminadas de inmediato.
+                <strong>Confirmo que tengo 18 años o más.</strong> Linguevia es una plataforma
+                exclusiva para mayores de edad.
               </span>
             </label>
 
@@ -584,35 +456,25 @@ export default function RegisterPage() {
                 className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
               />
               <span>
-                Acepto las Normas de la Comunidad, la Política de Privacidad y el tratamiento seguro
-                de mis datos (puedo eliminar mi cuenta en cualquier momento).
+                Acepto las Normas de la Comunidad, la Política de Privacidad y el tratamiento de mis
+                preferencias de aprendizaje.
               </span>
             </label>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <button
-              type="submit"
-              className="flex-1 py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Registrarme por correo</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleGoogleSignup}
-              className="py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs"
-            >
-              Registrarme con Google
-            </button>
-          </div>
+          <button
+            type="submit"
+            className="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Crear cuenta en Linguevia</span>
+          </button>
         </form>
 
         <p className="text-center text-xs text-slate-500">
-          ¿Ya tienes una cuenta?{' '}
+          ¿Ya tienes una cuenta creada?{' '}
           <Link href="/login" className="text-teal-700 font-semibold hover:underline">
-            Inicia sesión aquí
+            Inicia sesión con tu usuario aquí
           </Link>
         </p>
       </div>

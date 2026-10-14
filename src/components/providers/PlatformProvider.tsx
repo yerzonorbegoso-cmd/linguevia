@@ -40,16 +40,18 @@ export interface ToastNotice {
 }
 
 interface RegisterInput {
-  email: string;
-  password: string;
+  username: string; // Required unique identifier
   displayName: string;
-  username: string;
+  password: string;
+  email?: string; // Optional
+  securityQuestion: string; // Required for password recovery
+  securityAnswer: string; // Required for password recovery
   birthDate: string;
   countryCode: string;
   timezone: string;
   confirmAdult: boolean;
   acceptTerms: boolean;
-  provider?: 'email' | 'google';
+  provider?: 'credentials' | 'email';
   nativeLanguageCode?: string;
   learningLanguageCode?: string;
   learningLevel?: CefrLevel;
@@ -77,6 +79,7 @@ interface PlatformContextValue {
   dismissToast: (id: string) => void;
 
   // Auth & Account
+  loginWithIdentifier: (identifier: string, password: string) => { ok: boolean; error?: string };
   loginWithEmail: (email: string, password: string) => { ok: boolean; error?: string };
   loginWithDemoAccount: (userId: string) => { ok: boolean; error?: string };
   registerAccount: (input: RegisterInput) => {
@@ -86,6 +89,16 @@ interface PlatformContextValue {
     onboardingCompleted?: boolean;
   };
   verifyCurrentEmail: (code: string) => { ok: boolean; error?: string };
+  getSecurityQuestionForUser: (identifier: string) => {
+    ok: boolean;
+    question?: string;
+    error?: string;
+  };
+  resetPasswordWithSecurityAnswer: (
+    identifier: string,
+    answer: string,
+    newPassword: string
+  ) => { ok: boolean; error?: string };
   requestPasswordRecovery: (email: string) => { ok: boolean; message: string };
   resetPasswordWithToken: (
     email: string,
@@ -192,6 +205,13 @@ interface PlatformContextValue {
     category: string;
   }) => Promise<{ ok: boolean; error?: string }>;
   adminUpdatePlatformSettings: (partial: Partial<PlatformSettingsState>) => Promise<void>;
+  adminResetUserPassword: (
+    targetUserId: string,
+    newPassword: string
+  ) => Promise<{ ok: boolean; error?: string }>;
+  adminGetUserAccountDetails: (
+    targetUserId: string
+  ) => { email: string; security_question: string } | null;
   markAllNotificationsRead: () => void;
 }
 
@@ -309,130 +329,6 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Automatically synchronize real Supabase OAuth (Google) sessions when returning from OAuth redirect
-  useEffect(() => {
-    if (!isHydrated) return;
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) return;
-
-    const syncOAuthUser = (oauthUser: {
-      id: string;
-      email?: string;
-      user_metadata?: Record<string, unknown>;
-    }) => {
-      const cleanEmail = (oauthUser.email ?? '').trim().toLowerCase();
-      if (!cleanEmail) return;
-
-      const metaName =
-        (typeof oauthUser.user_metadata?.full_name === 'string' &&
-          oauthUser.user_metadata.full_name) ||
-        (typeof oauthUser.user_metadata?.name === 'string' && oauthUser.user_metadata.name) ||
-        cleanEmail.split('@')[0];
-
-      const metaAvatar =
-        typeof oauthUser.user_metadata?.avatar_url === 'string'
-          ? oauthUser.user_metadata.avatar_url
-          : null;
-
-      commitStore((prev) => {
-        const existingPriv = prev.privateAccounts.find(
-          (a) => a.email.toLowerCase() === cleanEmail || a.user_id === oauthUser.id
-        );
-        if (existingPriv) {
-          setActiveSessionUser(existingPriv.user_id);
-          return prev;
-        }
-
-        const baseUser = cleanEmail
-          .split('@')[0]
-          .replace(/[^a-z0-9_.-]/g, '_')
-          .slice(0, 22);
-        const uniqueUsername = prev.profiles.some((p) => p.username === baseUser)
-          ? `${baseUser}_${Math.floor(100 + Math.random() * 900)}`
-          : baseUser.length >= 3
-          ? baseUser
-          : `${baseUser}_pe`;
-
-        const nowIso = new Date().toISOString();
-        const newProfile: UserProfile = {
-          id: oauthUser.id,
-          username: uniqueUsername,
-          display_name: metaName,
-          avatar_url: metaAvatar,
-          bio: '',
-          country_code: 'PE',
-          timezone: 'America/Lima',
-          learning_goals: 'Practicar conversación fluida y vocabulario cotidiano.',
-          availability_slots: [{ day: 'sat', window: 'evening' }],
-          privacy_settings: {
-            show_country: true,
-            show_timezone: true,
-            allow_calls_from_partners: true,
-            allow_search_indexing: true,
-            show_online_status: true,
-          },
-          role: 'user',
-          is_adult_verified: true,
-          onboarding_completed: false,
-          is_suspended: false,
-          last_active_at: nowIso,
-          created_at: nowIso,
-          updated_at: nowIso,
-          languages: [
-            {
-              id: `ul-${Date.now()}-1`,
-              user_id: oauthUser.id,
-              language_code: 'es',
-              relation_type: 'native',
-              proficiency_level: 'native',
-              target_goal: 'Compartir mi idioma nativo y cultura',
-            },
-            {
-              id: `ul-${Date.now()}-2`,
-              user_id: oauthUser.id,
-              language_code: 'en',
-              relation_type: 'learning',
-              proficiency_level: 'B1',
-              target_goal: 'Practicar conversación fluida con hablantes nativos',
-            },
-          ],
-          interest_slugs: ['travel-culture', 'technology'],
-        };
-
-        const newPriv: PrivateAccountRecord = {
-          user_id: oauthUser.id,
-          email: cleanEmail,
-          email_verified: true,
-          birth_date: '1995-06-15',
-          auth_provider: 'google',
-        };
-
-        setActiveSessionUser(oauthUser.id);
-        return {
-          ...prev,
-          profiles: [...prev.profiles, newProfile],
-          privateAccounts: [...prev.privateAccounts, newPriv],
-        };
-      });
-    };
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) {
-        syncOAuthUser(data.session.user);
-      }
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        syncOAuthUser(session.user);
-      }
-    });
-
-    return () => {
-      sub.subscription.unsubscribe();
-    };
-  }, [commitStore, isHydrated, setActiveSessionUser]);
-
   const currentUser = useMemo(() => {
     if (!currentUserId) return null;
     return store.profiles.find((p) => p.id === currentUserId) ?? null;
@@ -443,33 +339,57 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     return store.privateAccounts.find((a) => a.user_id === currentUserId) ?? null;
   }, [currentUserId, store.privateAccounts]);
 
-  const loginWithEmail = useCallback(
-    (email: string, password: string) => {
-      const normalized = email.trim().toLowerCase();
-      const priv = store.privateAccounts.find((a) => a.email.toLowerCase() === normalized);
-      if (!priv || (priv.password_hash && priv.password_hash !== password)) {
-        return { ok: false, error: 'Credenciales inválidas. Verifica tu correo y contraseña.' };
+  const loginWithIdentifier = useCallback(
+    (identifier: string, password: string) => {
+      const clean = identifier.trim().toLowerCase().replace(/^@/, '');
+      if (!clean) {
+        return { ok: false, error: 'Ingresa tu nombre de usuario o correo electrónico.' };
       }
 
-      const profile = store.profiles.find((p) => p.id === priv.user_id);
+      // Check if identifier matches a username in profiles or an email in private accounts
+      const profileByUsername = store.profiles.find(
+        (p) => p.username.toLowerCase() === clean
+      );
+      const privByEmail = store.privateAccounts.find(
+        (a) => a.email && a.email.toLowerCase() === clean
+      );
+
+      const targetUserId = profileByUsername?.id ?? privByEmail?.user_id;
+      if (!targetUserId) {
+        return { ok: false, error: 'Usuario o correo no encontrado. Verifica tus datos.' };
+      }
+
+      const priv = store.privateAccounts.find((a) => a.user_id === targetUserId);
+      if (!priv || (priv.password_hash && priv.password_hash !== password)) {
+        return { ok: false, error: 'Contraseña incorrecta. Verifica tus datos o recupera tu acceso.' };
+      }
+
+      const profile = store.profiles.find((p) => p.id === targetUserId);
       if (!profile) {
-        return { ok: false, error: 'Perfil no encontrado.' };
+        return { ok: false, error: 'Perfil de usuario no encontrado.' };
       }
 
       if (profile.is_suspended) {
         return {
           ok: false,
-          error: `Esta cuenta ha sido suspendida por moderación. Motivo: ${
-            profile.suspension_reason || 'Incumplimiento de normas.'
+          error: `Esta cuenta ha sido suspendida. Motivo: ${
+            profile.suspension_reason || 'Incumplimiento de normas de la comunidad.'
           }`,
         };
       }
 
       setActiveSessionUser(profile.id);
-      pushToast('success', `Bienvenido/a de nuevo, ${profile.display_name}`);
+      pushToast('success', `¡Bienvenido/a de nuevo, ${profile.display_name}!`);
       return { ok: true };
     },
     [pushToast, setActiveSessionUser, store.privateAccounts, store.profiles]
+  );
+
+  const loginWithEmail = useCallback(
+    (email: string, password: string) => {
+      return loginWithIdentifier(email, password);
+    },
+    [loginWithIdentifier]
   );
 
   const loginWithDemoAccount = useCallback(
@@ -500,34 +420,57 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: 'Debes aceptar las condiciones de uso y privacidad.' };
       }
 
-      const cleanEmail = input.email.trim().toLowerCase();
-      const isGoogle = input.provider === 'google';
-      let cleanUsername = input.username.trim().toLowerCase();
-
-      const existingPrivate = store.privateAccounts.find(
-        (a) => a.email.toLowerCase() === cleanEmail
-      );
-      if (existingPrivate) {
-        if (isGoogle) {
-          const existingProfile = store.profiles.find((p) => p.id === existingPrivate.user_id);
-          setActiveSessionUser(existingPrivate.user_id);
-          pushToast('success', 'Sesión iniciada con tu cuenta de Google.');
-          return {
-            ok: true,
-            requiresVerification: false,
-            onboardingCompleted: Boolean(
-              existingProfile?.onboarding_completed && existingProfile.languages.length > 0
-            ),
-          };
-        }
-        return { ok: false, error: 'Ya existe una cuenta registrada con este correo electrónico.' };
+      const cleanUsername = input.username.trim().toLowerCase().replace(/^@/, '');
+      if (!cleanUsername || cleanUsername.length < 3) {
+        return { ok: false, error: 'El nombre de usuario debe tener al menos 3 caracteres.' };
       }
-      if (store.profiles.some((p) => p.username.toLowerCase() === cleanUsername)) {
-        if (isGoogle) {
-          cleanUsername = `${cleanUsername}_${Math.floor(100 + Math.random() * 900)}`;
-        } else {
-          return { ok: false, error: 'Ese nombre de usuario ya está en uso. Elige otro.' };
+      if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
+        return {
+          ok: false,
+          error: 'El nombre de usuario solo puede contener letras, números, guiones y puntos.',
+        };
+      }
+
+      // Check username uniqueness strictly
+      const usernameExists = store.profiles.some(
+        (p) => p.username.toLowerCase() === cleanUsername
+      );
+      if (usernameExists) {
+        return {
+          ok: false,
+          error: `El nombre de usuario '@${cleanUsername}' ya está registrado por otra persona. Por favor, elige uno diferente.`,
+        };
+      }
+
+      // Optional email uniqueness check
+      const cleanEmail = (input.email || '').trim().toLowerCase();
+      if (cleanEmail) {
+        const emailExists = store.privateAccounts.some(
+          (a) => a.email && a.email.toLowerCase() === cleanEmail
+        );
+        if (emailExists) {
+          return { ok: false, error: 'Ya existe una cuenta registrada con este correo electrónico.' };
         }
+      }
+
+      // Security Question and Answer validation
+      const cleanQuestion = (input.securityQuestion || '').trim();
+      const cleanAnswer = (input.securityAnswer || '').trim().toLowerCase();
+      if (!cleanQuestion || cleanQuestion.length < 4) {
+        return {
+          ok: false,
+          error: 'Debes seleccionar o escribir una pregunta secreta de seguridad.',
+        };
+      }
+      if (!cleanAnswer || cleanAnswer.length < 2) {
+        return {
+          ok: false,
+          error: 'Debes escribir la respuesta secreta que usarás para recuperar tu cuenta.',
+        };
+      }
+
+      if (!input.password || input.password.length < 8) {
+        return { ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' };
       }
 
       const newUserId = `user-${Date.now()}`;
@@ -557,14 +500,14 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
           language_code: learningCode,
           relation_type: 'learning',
           proficiency_level: level,
-          target_goal: 'Practicar conversación fluida con hablantes nativos',
+          target_goal: 'Practicar conversación fluida con compañeros nativos',
         },
       ];
 
       const newProfile: UserProfile = {
         id: newUserId,
         username: cleanUsername,
-        display_name: input.displayName.trim(),
+        display_name: input.displayName.trim() || cleanUsername,
         avatar_url: null,
         bio: '',
         country_code: (input.countryCode || 'PE').toUpperCase(),
@@ -591,11 +534,14 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
       const newPrivate: PrivateAccountRecord = {
         user_id: newUserId,
+        username: cleanUsername,
         email: cleanEmail,
-        email_verified: true,
+        email_verified: Boolean(cleanEmail),
         birth_date: input.birthDate,
-        auth_provider: input.provider ?? 'email',
+        auth_provider: 'credentials',
         password_hash: input.password,
+        security_question: cleanQuestion,
+        security_answer_hash: cleanAnswer,
       };
 
       commitStore((prev) => ({
@@ -623,7 +569,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       setActiveSessionUser(newUserId);
       pushToast(
         'success',
-        'Cuenta creada. Completa tus preferencias de aprendizaje para que otros te encuentren.'
+        `¡Cuenta @${cleanUsername} creada con éxito! Personaliza tus preferencias para conectar.`
       );
       return { ok: true, requiresVerification: false, onboardingCompleted: false };
     },
@@ -649,22 +595,101 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     [commitStore, currentUserId, pushToast]
   );
 
+  const getSecurityQuestionForUser = useCallback(
+    (identifier: string) => {
+      const clean = identifier.trim().toLowerCase().replace(/^@/, '');
+      if (!clean) {
+        return { ok: false, error: 'Ingresa tu nombre de usuario o correo.' };
+      }
+
+      const profile = store.profiles.find((p) => p.username.toLowerCase() === clean);
+      const privByEmail = store.privateAccounts.find(
+        (a) => a.email && a.email.toLowerCase() === clean
+      );
+      const targetUserId = profile?.id ?? privByEmail?.user_id;
+
+      if (!targetUserId) {
+        return { ok: false, error: 'No se encontró ninguna cuenta con ese usuario o correo.' };
+      }
+
+      const priv = store.privateAccounts.find((a) => a.user_id === targetUserId);
+      if (!priv || !priv.security_question) {
+        return {
+          ok: false,
+          error:
+            'Esta cuenta no tiene configurada una pregunta secreta de seguridad. Por motivos de protección, la cuenta no puede recuperarse por este medio. Contacta al administrador para asistencia y recuperación manual.',
+        };
+      }
+
+      return { ok: true, question: priv.security_question };
+    },
+    [store.privateAccounts, store.profiles]
+  );
+
+  const resetPasswordWithSecurityAnswer = useCallback(
+    (identifier: string, answer: string, newPassword: string) => {
+      if (newPassword.length < 8) {
+        return { ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' };
+      }
+      const clean = identifier.trim().toLowerCase().replace(/^@/, '');
+      const cleanAnswer = answer.trim().toLowerCase();
+
+      const profile = store.profiles.find((p) => p.username.toLowerCase() === clean);
+      const privByEmail = store.privateAccounts.find(
+        (a) => a.email && a.email.toLowerCase() === clean
+      );
+      const targetUserId = profile?.id ?? privByEmail?.user_id;
+
+      if (!targetUserId) {
+        return { ok: false, error: 'No se encontró la cuenta a recuperar.' };
+      }
+
+      const priv = store.privateAccounts.find((a) => a.user_id === targetUserId);
+      if (!priv || !priv.security_question || !priv.security_answer_hash) {
+        return {
+          ok: false,
+          error:
+            'Esta cuenta no cuenta con pregunta secreta configurada. Por seguridad, la cuenta queda sin acceso directo. Contacta al administrador para asistencia.',
+        };
+      }
+
+      if (priv.security_answer_hash.toLowerCase() !== cleanAnswer) {
+        return {
+          ok: false,
+          error:
+            'Respuesta secreta incorrecta. Si no recuerdas la respuesta exacta, la cuenta no podrá ser recuperada por este medio. Contacta al administrador de la página para asistencia.',
+        };
+      }
+
+      commitStore((prev) => ({
+        ...prev,
+        privateAccounts: prev.privateAccounts.map((a) =>
+          a.user_id === targetUserId ? { ...a, password_hash: newPassword } : a
+        ),
+      }));
+
+      setActiveSessionUser(targetUserId);
+      pushToast('success', '¡Respuesta correcta! Tu contraseña fue actualizada y tu sesión iniciada.');
+      return { ok: true };
+    },
+    [commitStore, pushToast, setActiveSessionUser, store.privateAccounts, store.profiles]
+  );
+
   const requestPasswordRecovery = useCallback(
     (email: string) => {
       const clean = email.trim().toLowerCase();
-      if (!clean.includes('@')) {
-        return { ok: false, message: 'Introduce un correo electrónico válido.' };
-      }
-      const exists = store.privateAccounts.some((a) => a.email.toLowerCase() === clean);
+      const exists = store.privateAccounts.some(
+        (a) => a.email.toLowerCase() === clean || a.username?.toLowerCase() === clean
+      );
       if (!exists) {
         return {
           ok: false,
-          message: 'No encontramos ninguna cuenta registrada con ese correo electrónico.',
+          message: 'No encontramos ninguna cuenta registrada con esos datos.',
         };
       }
       return {
         ok: true,
-        message: 'Cuenta encontrada. Ingresa tu nueva contraseña directamente a continuación.',
+        message: 'Cuenta encontrada. Responde a tu pregunta secreta de seguridad a continuación.',
       };
     },
     [store.privateAccounts]
@@ -676,7 +701,9 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: 'La nueva contraseña debe tener al menos 8 caracteres.' };
       }
       const clean = email.trim().toLowerCase();
-      const matched = store.privateAccounts.find((a) => a.email.toLowerCase() === clean);
+      const matched = store.privateAccounts.find(
+        (a) => a.email.toLowerCase() === clean || a.username?.toLowerCase() === clean
+      );
       if (!matched) {
         return { ok: false, error: 'Los datos de verificación no coinciden con ninguna cuenta.' };
       }
@@ -692,7 +719,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       commitStore((prev) => ({
         ...prev,
         privateAccounts: prev.privateAccounts.map((a) =>
-          a.email.toLowerCase() === clean ? { ...a, password_hash: newPassword } : a
+          a.user_id === matched.user_id ? { ...a, password_hash: newPassword } : a
         ),
       }));
       setActiveSessionUser(matched.user_id);
@@ -700,6 +727,42 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       return { ok: true };
     },
     [commitStore, pushToast, setActiveSessionUser, store.privateAccounts]
+  );
+
+  const adminResetUserPassword = useCallback(
+    async (targetUserId: string, newPassword: string) => {
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+        return { ok: false, error: 'Operación denegada: rol administrativo requerido.' };
+      }
+      if (newPassword.length < 6) {
+        return { ok: false, error: 'La nueva contraseña debe tener al menos 6 caracteres.' };
+      }
+
+      commitStore((prev) => ({
+        ...prev,
+        privateAccounts: prev.privateAccounts.map((a) =>
+          a.user_id === targetUserId ? { ...a, password_hash: newPassword } : a
+        ),
+      }));
+      pushToast('success', 'Contraseña de usuario restablecida por el administrador.');
+      return { ok: true };
+    },
+    [commitStore, currentUser, pushToast]
+  );
+
+  const adminGetUserAccountDetails = useCallback(
+    (targetUserId: string) => {
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'moderator')) {
+        return null;
+      }
+      const priv = store.privateAccounts.find((a) => a.user_id === targetUserId);
+      if (!priv) return null;
+      return {
+        email: priv.email || 'No proporcionado (Solo usuario)',
+        security_question: priv.security_question || 'No configurada',
+      };
+    },
+    [currentUser, store.privateAccounts]
   );
 
   const logout = useCallback(() => {
@@ -1809,10 +1872,13 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       toasts,
       pushToast,
       dismissToast,
+      loginWithIdentifier,
       loginWithEmail,
       loginWithDemoAccount,
       registerAccount,
       verifyCurrentEmail,
+      getSecurityQuestionForUser,
+      resetPasswordWithSecurityAnswer,
       requestPasswordRecovery,
       resetPasswordWithToken,
       logout,
@@ -1839,6 +1905,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminAddLanguageCatalog,
       adminAddInterestCatalog,
       adminUpdatePlatformSettings,
+      adminResetUserPassword,
+      adminGetUserAccountDetails,
       markAllNotificationsRead,
     }),
     [
@@ -1849,10 +1917,13 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       toasts,
       pushToast,
       dismissToast,
+      loginWithIdentifier,
       loginWithEmail,
       loginWithDemoAccount,
       registerAccount,
       verifyCurrentEmail,
+      getSecurityQuestionForUser,
+      resetPasswordWithSecurityAnswer,
       requestPasswordRecovery,
       resetPasswordWithToken,
       logout,
@@ -1879,6 +1950,8 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       adminAddLanguageCatalog,
       adminAddInterestCatalog,
       adminUpdatePlatformSettings,
+      adminResetUserPassword,
+      adminGetUserAccountDetails,
       markAllNotificationsRead,
     ]
   );

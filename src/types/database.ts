@@ -95,16 +95,16 @@ export interface UserProfile {
   is_demo_account?: boolean;
 }
 
-/**
- * Strictly private owner-only record (mirrors profile_private + auth.users).
- */
 export interface PrivateAccountRecord {
   user_id: string;
-  email: string;
+  username?: string;
+  email: string; // May be empty string if not provided
   email_verified: boolean;
   birth_date: string; // YYYY-MM-DD, validated 18+
-  auth_provider: 'email' | 'google';
+  auth_provider: 'credentials' | 'email' | 'google';
   password_hash?: string;
+  security_question?: string;
+  security_answer_hash?: string;
 }
 
 export interface UserConsentRecord {

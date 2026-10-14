@@ -14,6 +14,11 @@ import {
   Ban,
   RotateCcw,
   Plus,
+  KeyRound,
+  Search,
+  Lock,
+  Mail,
+  Copy,
 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 
@@ -28,6 +33,8 @@ export default function AdminDashboardPage() {
     adminAddLanguageCatalog,
     adminAddInterestCatalog,
     adminUpdatePlatformSettings,
+    adminResetUserPassword,
+    adminGetUserAccountDetails,
     loginWithDemoAccount,
   } = usePlatform();
 
@@ -35,6 +42,17 @@ export default function AdminDashboardPage() {
     'reports' | 'users' | 'catalog' | 'ads_and_quotas' | 'audit'
   >('reports');
   const [adminNotesMap, setAdminNotesMap] = useState<Record<string, string>>({});
+
+  // User management & credentials recovery state
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserForReset, setSelectedUserForReset] = useState<{
+    id: string;
+    username: string;
+    display_name: string;
+  } | null>(null);
+  const [resetModalNewPass, setResetModalNewPass] = useState('');
+  const [resetModalSuccess, setResetModalSuccess] = useState<string | null>(null);
+  const [resetModalError, setResetModalError] = useState<string | null>(null);
 
   // New language form
   const [newLangCode, setNewLangCode] = useState('');
@@ -281,70 +299,288 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: USERS MANAGEMENT */}
+      {/* TAB 2: USERS MANAGEMENT & CREDENTIAL RECOVERY REGISTRY */}
       {activeTab === 'users' && (
-        <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between text-xs text-slate-600">
-            <span>
-              Total cuentas: <strong>{store.profiles.length}</strong> · Suspendidas:{' '}
-              <strong>{suspendedUsersCount}</strong>
-            </span>
+        <div className="space-y-6">
+          {/* Informative Admin Notice */}
+          <div className="rounded-3xl border border-teal-200 bg-teal-50/60 p-5 space-y-2 text-xs text-teal-900">
+            <div className="flex items-center gap-2 font-bold text-sm text-teal-950">
+              <KeyRound className="w-4 h-4 text-teal-700" />
+              <span>Registro Maestro de Cuentas y Recuperación (Exclusivo Administrador)</span>
+            </div>
+            <p className="leading-relaxed">
+              Como administrador de Linguevia, conservas el registro maestro de todos los usuarios
+              registrados. Si un usuario olvida su contraseña o su respuesta secreta y reporta su
+              caso al correo oficial de soporte, puedes verificar su usuario aquí, consultar su
+              pregunta secreta y restablecerle una contraseña temporal para entregársela
+              directamente.
+            </p>
           </div>
-          <div className="divide-y divide-slate-100">
-            {store.profiles.map((u) => (
-              <div
-                key={u.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-              >
-                <div>
+
+          {/* Modal for setting new password for user */}
+          {selectedUserForReset && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-900">{u.display_name}</span>
-                    <span className="text-slate-400">@{u.username}</span>
-                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold uppercase text-[10px]">
-                      {u.role}
-                    </span>
-                    {u.is_suspended && (
-                      <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">
-                        SUSPENDIDO
-                      </span>
-                    )}
+                    <KeyRound className="w-5 h-5 text-teal-600" />
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-900">
+                        Restablecer y entregar contraseña
+                      </h2>
+                      <p className="text-[11px] text-slate-500">
+                        Usuario: @{selectedUserForReset.username} ({selectedUserForReset.display_name})
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-slate-500 mt-0.5">
-                    País: {u.country_code} · Adulto +18: {u.is_adult_verified ? 'Sí' : 'No'}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserForReset(null);
+                      setResetModalNewPass('');
+                      setResetModalSuccess(null);
+                      setResetModalError(null);
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-700 px-2 py-1"
+                  >
+                    Cerrar
+                  </button>
                 </div>
 
-                {u.id !== currentUser.id && (
-                  <div>
-                    {u.is_suspended ? (
-                      <button
-                        type="button"
-                        onClick={() => adminToggleUserSuspension(u.id, false)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Restaurar cuenta</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          adminToggleUserSuspension(
-                            u.id,
-                            true,
-                            'Suspensión preventiva desde panel admin'
-                          )
-                        }
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold border border-rose-200"
-                      >
-                        <Ban className="w-3.5 h-3.5" />
-                        <span>Suspender cuenta</span>
-                      </button>
-                    )}
+                {resetModalError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                    {resetModalError}
                   </div>
                 )}
+
+                {resetModalSuccess ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>¡Contraseña actualizada en el sistema!</span>
+                      </div>
+                      <p>
+                        Copia los siguientes datos para entregárselos al usuario por el canal de
+                        soporte:
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-900 text-white rounded-xl font-mono text-xs space-y-1 select-all">
+                      <div>Usuario: @{selectedUserForReset.username}</div>
+                      <div>Nueva Contraseña: {resetModalNewPass}</div>
+                      <div>Web: https://linguevia.vercel.app/login</div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof navigator !== 'undefined') {
+                          navigator.clipboard.writeText(
+                            `Tus datos de acceso a Linguevia:\nUsuario: @${selectedUserForReset.username}\nContraseña: ${resetModalNewPass}\nAcceso: https://linguevia.vercel.app/login`
+                          );
+                        }
+                        alert('Copiado al portapapeles para enviar al usuario.');
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar datos para el usuario</span>
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setResetModalError(null);
+                      if (resetModalNewPass.length < 6) {
+                        setResetModalError('La contraseña debe tener al menos 6 caracteres.');
+                        return;
+                      }
+                      const res = await adminResetUserPassword(
+                        selectedUserForReset.id,
+                        resetModalNewPass
+                      );
+                      if (!res.ok) {
+                        setResetModalError(res.error || 'Error al restablecer la contraseña.');
+                        return;
+                      }
+                      setResetModalSuccess('Contraseña restablecida con éxito.');
+                    }}
+                    className="space-y-3.5"
+                  >
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Nueva contraseña temporal para entregar al usuario:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          required
+                          value={resetModalNewPass}
+                          onChange={(e) => setResetModalNewPass(e.target.value)}
+                          placeholder="Ej. Linguevia2026!"
+                          className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const generated = `Linguevia_${Math.floor(1000 + Math.random() * 9000)}!`;
+                            setResetModalNewPass(generated);
+                          }}
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium"
+                        >
+                          Generar
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        El usuario podrá ingresar de inmediato a su cuenta con esta contraseña.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserForReset(null)}
+                        className="px-4 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs"
+                      >
+                        Guardar y entregar
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* User List & Filter */}
+          <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  placeholder="Buscar usuario (@), nombre o país..."
+                  className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div className="text-xs text-slate-500">
+                Total cuentas registradas: <strong>{store.profiles.length}</strong> · Suspendidas:{' '}
+                <strong>{suspendedUsersCount}</strong>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {store.profiles
+                .filter((u) => {
+                  if (!userSearchTerm.trim()) return true;
+                  const q = userSearchTerm.toLowerCase();
+                  return (
+                    u.username.toLowerCase().includes(q) ||
+                    u.display_name.toLowerCase().includes(q) ||
+                    u.country_code.toLowerCase().includes(q)
+                  );
+                })
+                .map((u) => {
+                  const accountDetails = adminGetUserAccountDetails(u.id);
+
+                  return (
+                    <div
+                      key={u.id}
+                      className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs hover:bg-slate-50/50"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-slate-900">{u.display_name}</span>
+                          <span className="font-mono text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-md">
+                            @{u.username}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold uppercase text-[10px]">
+                            {u.role}
+                          </span>
+                          {u.is_suspended && (
+                            <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">
+                              SUSPENDIDO
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span>
+                            <strong>Nacionalidad / País:</strong> {u.country_code}
+                          </span>
+                          <span>
+                            <strong>Correo:</strong> {accountDetails?.email || 'Solo usuario'}
+                          </span>
+                          <span>
+                            <strong>Pregunta secreta:</strong>{' '}
+                            {accountDetails?.security_question || 'No configurada'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* ADMIN PASSWORD RESET BUTTON */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserForReset({
+                              id: u.id,
+                              username: u.username,
+                              display_name: u.display_name,
+                            });
+                            setResetModalNewPass(`Linguevia_${Math.floor(1000 + Math.random() * 9000)}!`);
+                            setResetModalSuccess(null);
+                            setResetModalError(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 font-semibold border border-teal-200"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>Restablecer contraseña</span>
+                        </button>
+
+                        {u.id !== currentUser.id && (
+                          <>
+                            {u.is_suspended ? (
+                              <button
+                                type="button"
+                                onClick={() => adminToggleUserSuspension(u.id, false)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Restaurar</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  adminToggleUserSuspension(
+                                    u.id,
+                                    true,
+                                    'Suspensión preventiva desde panel admin'
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold border border-rose-200"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                                <span>Suspender</span>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}

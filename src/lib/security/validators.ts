@@ -38,7 +38,13 @@ export function isAdultBirthDate(birthDateIso: string, referenceDate: Date = new
 }
 
 export const registerSchema = z.object({
-  email: z.string().trim().email('Introduce un correo electrónico válido.'),
+  email: z
+    .string()
+    .trim()
+    .refine((val) => val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: 'Introduce un correo electrónico válido o déjalo en blanco.',
+    })
+    .default(''),
   password: z
     .string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres.')
@@ -53,7 +59,15 @@ export const registerSchema = z.object({
     .trim()
     .min(3, 'El nombre de usuario debe tener entre 3 y 32 caracteres.')
     .max(32)
-    .regex(/^[a-zA-Z0-9_.-]+$/, 'Solo letras, números, guiones y puntos.'),
+    .regex(/^[a-zA-Z0-9_.-]+$/, 'El usuario solo puede contener letras, números, guiones y puntos.'),
+  securityQuestion: z
+    .string()
+    .trim()
+    .min(4, 'Selecciona o escribe una pregunta secreta de seguridad.'),
+  securityAnswer: z
+    .string()
+    .trim()
+    .min(2, 'Escribe la respuesta a tu pregunta secreta.'),
   birthDate: z
     .string()
     .refine((val) => isAdultBirthDate(val), {

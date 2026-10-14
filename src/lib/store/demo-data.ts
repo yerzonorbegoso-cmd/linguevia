@@ -77,6 +77,16 @@ export const COUNTRY_OPTIONS = [
   { code: 'CA', name: 'Canadá', defaultTimezone: 'America/Toronto' },
 ];
 
+export const DEFAULT_SECURITY_QUESTIONS: string[] = [
+  '¿Cuál fue el nombre de tu primera mascota?',
+  '¿En qué ciudad nació tu madre o padre?',
+  '¿Cuál es tu comida, plato o postre favorito?',
+  '¿Cuál fue el nombre de tu primer colegio o escuela?',
+  '¿Cuál es el nombre de tu mejor amigo/a de la infancia?',
+  '¿Cuál es tu canción, película o libro favorito?',
+  'Otra (escribir mi propia pregunta)...',
+];
+
 export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDataStore {
   const defaultSettings: PlatformSettingsState = {
     ads_enabled: true,
@@ -257,35 +267,47 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
   const privateAccounts: PrivateAccountRecord[] = [
     {
       user_id: 'demo-user-elena',
+      username: 'elena_madrid_demo',
       email: 'elena.demo@linguevia.test',
       email_verified: true,
       birth_date: '1993-04-18',
-      auth_provider: 'email',
+      auth_provider: 'credentials',
       password_hash: 'DemoPass123!',
+      security_question: '¿Cuál fue el nombre de tu primera mascota?',
+      security_answer_hash: 'toby',
     },
     {
       user_id: 'demo-user-liam',
+      username: 'liam_london_demo',
       email: 'liam.demo@linguevia.test',
       email_verified: true,
       birth_date: '1991-11-05',
-      auth_provider: 'email',
+      auth_provider: 'credentials',
       password_hash: 'DemoPass123!',
+      security_question: '¿Cuál fue el nombre de tu primera mascota?',
+      security_answer_hash: 'biscuit',
     },
     {
       user_id: 'demo-user-claire',
+      username: 'claire_paris_demo',
       email: 'claire.demo@linguevia.test',
       email_verified: true,
       birth_date: '1995-07-22',
-      auth_provider: 'email',
+      auth_provider: 'credentials',
       password_hash: 'DemoPass123!',
+      security_question: '¿Cuál es tu comida, plato o postre favorito?',
+      security_answer_hash: 'croissant',
     },
     {
       user_id: 'demo-user-kenji',
+      username: 'kenji_tokyo_demo',
       email: 'kenji.demo@linguevia.test',
       email_verified: true,
       birth_date: '1994-02-14',
-      auth_provider: 'email',
+      auth_provider: 'credentials',
       password_hash: 'DemoPass123!',
+      security_question: '¿Cuál es tu comida, plato o postre favorito?',
+      security_answer_hash: 'ramen',
     },
   ];
 
