@@ -1,3 +1,7 @@
+param (
+    [string]$CommitMessage = "chore: platform updates"
+)
+
 # Script de sincronización automática a GitHub con token de Windows Credential Manager
 Add-Type -TypeDefinition @"
 using System;
@@ -35,10 +39,6 @@ public class GitAutoSync {
     }
 }
 "@
-
-param (
-    [string]$CommitMessage = "chore: platform updates"
-)
 
 $token = [GitAutoSync]::ReadCred("GitHub - https://api.github.com/yerzonorbegoso-cmd")
 if ($token) {
