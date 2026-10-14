@@ -40,6 +40,11 @@ export interface ToastNotice {
   message: string;
 }
 
+export interface RegisterLearningLang {
+  languageCode: string;
+  level: CefrLevel;
+}
+
 interface RegisterInput {
   username: string; // Required unique identifier
   displayName: string;
@@ -53,7 +58,9 @@ interface RegisterInput {
   confirmAdult: boolean;
   acceptTerms: boolean;
   provider?: 'credentials' | 'email';
+  nativeLanguageCodes?: string[];
   nativeLanguageCode?: string;
+  learningLanguages?: RegisterLearningLang[];
   learningLanguageCode?: string;
   learningLevel?: CefrLevel;
 }
@@ -521,33 +528,57 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       const newUserId = `user-${Date.now()}`;
       const nowIso = new Date().toISOString();
 
-      const nativeCode = input.nativeLanguageCode || 'es';
-      const learningCode =
-        input.learningLanguageCode && input.learningLanguageCode !== nativeCode
-          ? input.learningLanguageCode
-          : nativeCode === 'es'
-          ? 'en'
-          : 'es';
-      const level: CefrLevel = input.learningLevel || 'B1';
+      // Build initial languages list: up to 4 native languages, and up to 4 optional learning languages
+      const initialLanguages: UserLanguage[] = [];
+      const rawNative = (
+        input.nativeLanguageCodes && input.nativeLanguageCodes.length > 0
+          ? input.nativeLanguageCodes
+          : [input.nativeLanguageCode || 'es']
+      ).map((c) => c.trim().toLowerCase());
 
-      const initialLanguages: UserLanguage[] = [
-        {
-          id: `ul-${Date.now()}-1`,
+      const uniqueNativeCodes = Array.from(new Set(rawNative)).slice(0, 4);
+      if (uniqueNativeCodes.length === 0) uniqueNativeCodes.push('es');
+
+      uniqueNativeCodes.forEach((code, idx) => {
+        initialLanguages.push({
+          id: `ul-${newUserId}-native-${idx}`,
           user_id: newUserId,
-          language_code: nativeCode,
+          language_code: code,
           relation_type: 'native',
           proficiency_level: 'native',
           target_goal: 'Compartir mi idioma nativo y cultura',
-        },
-        {
-          id: `ul-${Date.now()}-2`,
-          user_id: newUserId,
-          language_code: learningCode,
-          relation_type: 'learning',
-          proficiency_level: level,
-          target_goal: 'Practicar conversación fluida con compañeros nativos',
-        },
-      ];
+        });
+      });
+
+      if (input.learningLanguages && Array.isArray(input.learningLanguages)) {
+        const seenLearning = new Set<string>();
+        for (const item of input.learningLanguages) {
+          const code = item.languageCode.trim().toLowerCase();
+          if (!uniqueNativeCodes.includes(code) && !seenLearning.has(code) && seenLearning.size < 4) {
+            seenLearning.add(code);
+            initialLanguages.push({
+              id: `ul-${newUserId}-learning-${seenLearning.size}`,
+              user_id: newUserId,
+              language_code: code,
+              relation_type: 'learning',
+              proficiency_level: item.level || 'B1',
+              target_goal: 'Practicar y mejorar fluidez con compañeros',
+            });
+          }
+        }
+      } else if (input.learningLanguageCode) {
+        const cleanLearning = input.learningLanguageCode.trim().toLowerCase();
+        if (!uniqueNativeCodes.includes(cleanLearning)) {
+          initialLanguages.push({
+            id: `ul-${newUserId}-learning-0`,
+            user_id: newUserId,
+            language_code: cleanLearning,
+            relation_type: 'learning',
+            proficiency_level: input.learningLevel || 'B1',
+            target_goal: 'Practicar conversación fluida con compañeros nativos',
+          });
+        }
+      }
 
       const newProfile: UserProfile = {
         id: newUserId,
@@ -830,13 +861,43 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     (input: OnboardingUpdateInput) => {
       if (!currentUserId) return { ok: false, error: 'Debes iniciar sesión.' };
 
-      const hasNative = input.languages.some((l) => l.relation_type === 'native');
-      const hasLearning = input.languages.some((l) => l.relation_type === 'learning');
-      if (!hasNative || !hasLearning) {
+      const nativeLangs = input.languages.filter((l) => l.relation_type === 'native');
+      const learningLangs = input.languages.filter((l) => l.relation_type === 'learning');
+
+      if (nativeLangs.length === 0) {
         return {
           ok: false,
-          error: 'Debes indicar al menos un idioma nativo y un idioma que deseas practicar.',
+          error: 'Debes indicar al menos un idioma que dominas.',
         };
+      }
+      if (nativeLangs.length > 4) {
+        return {
+          ok: false,
+          error: 'Puedes seleccionar un máximo de 4 idiomas que dominas.',
+        };
+      }
+      if (learningLangs.length > 4) {
+        return {
+          ok: false,
+          error: 'Puedes seleccionar un máximo de 4 idiomas que deseas aprender.',
+        };
+      }
+
+      // Check duplicates
+      const seenNative = new Set<string>();
+      for (const l of nativeLangs) {
+        if (seenNative.has(l.language_code)) {
+          return { ok: false, error: 'No puedes repetir el mismo idioma que dominas.' };
+        }
+        seenNative.add(l.language_code);
+      }
+
+      const seenLearning = new Set<string>();
+      for (const l of learningLangs) {
+        if (seenLearning.has(l.language_code)) {
+          return { ok: false, error: 'No puedes repetir el mismo idioma que deseas aprender.' };
+        }
+        seenLearning.add(l.language_code);
       }
 
       const nowIso = new Date().toISOString();

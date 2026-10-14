@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, AlertCircle, CheckCircle2, HelpCircle, Lock, User, Globe2 } from 'lucide-react';
+import { ShieldCheck, AlertCircle, CheckCircle2, HelpCircle, Lock, User, Globe2, Plus, Trash2 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 import { COUNTRY_OPTIONS, INITIAL_LANGUAGES, DEFAULT_SECURITY_QUESTIONS } from '@/lib/store/demo-data';
 import { calculateAgeYears, isAdultBirthDate, registerSchema } from '@/lib/security/validators';
@@ -32,12 +32,51 @@ export default function RegisterPage() {
   const [birthDate, setBirthDate] = useState('');
   const [countryCode, setCountryCode] = useState('PE');
   const [timezone, setTimezone] = useState('America/Lima');
-  const [nativeLanguageCode, setNativeLanguageCode] = useState('es');
-  const [learningLanguageCode, setLearningLanguageCode] = useState('en');
-  const [learningLevel, setLearningLevel] = useState<CefrLevel>('B1');
+  const [nativeLanguageCodes, setNativeLanguageCodes] = useState<string[]>(['es']);
+  const [learningLanguages, setLearningLanguages] = useState<
+    Array<{ languageCode: string; level: CefrLevel }>
+  >([{ languageCode: 'en', level: 'B1' }]);
   const [confirmAdult, setConfirmAdult] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const addNativeLang = () => {
+    if (nativeLanguageCodes.length >= 4) return;
+    const available = INITIAL_LANGUAGES.find((l) => !nativeLanguageCodes.includes(l.code));
+    setNativeLanguageCodes((prev) => [...prev, available ? available.code : 'en']);
+  };
+
+  const removeNativeLang = (idx: number) => {
+    if (nativeLanguageCodes.length <= 1) return;
+    setNativeLanguageCodes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateNativeLang = (idx: number, newCode: string) => {
+    setNativeLanguageCodes((prev) => prev.map((c, i) => (i === idx ? newCode : c)));
+  };
+
+  const addLearningLang = () => {
+    if (learningLanguages.length >= 4) return;
+    const used = [...nativeLanguageCodes, ...learningLanguages.map((l) => l.languageCode)];
+    const available = INITIAL_LANGUAGES.find((l) => !used.includes(l.code));
+    setLearningLanguages((prev) => [
+      ...prev,
+      { languageCode: available ? available.code : 'fr', level: 'B1' },
+    ]);
+  };
+
+  const removeLearningLang = (idx: number) => {
+    setLearningLanguages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateLearningLang = (
+    idx: number,
+    patch: Partial<{ languageCode: string; level: CefrLevel }>
+  ) => {
+    setLearningLanguages((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, ...patch } : item))
+    );
+  };
 
   const handleCountryChange = (newCode: string) => {
     setCountryCode(newCode);
@@ -118,6 +157,18 @@ export default function RegisterPage() {
       return;
     }
 
+    const nativeSet = new Set(nativeLanguageCodes);
+    if (nativeSet.size !== nativeLanguageCodes.length) {
+      setError('No puedes seleccionar el mismo idioma que dominas más de una vez.');
+      return;
+    }
+    const learningCodes = learningLanguages.map((l) => l.languageCode);
+    const learningSet = new Set(learningCodes);
+    if (learningSet.size !== learningLanguages.length) {
+      setError('No puedes seleccionar el mismo idioma para aprender más de una vez.');
+      return;
+    }
+
     const res = registerAccount({
       username: cleanUser,
       displayName: displayName.trim() || cleanUser,
@@ -130,9 +181,8 @@ export default function RegisterPage() {
       timezone,
       confirmAdult,
       acceptTerms,
-      nativeLanguageCode,
-      learningLanguageCode,
-      learningLevel,
+      nativeLanguageCodes,
+      learningLanguages,
     });
 
     if (!res.ok) {
@@ -351,61 +401,156 @@ export default function RegisterPage() {
           </div>
 
           {/* PREFERENCIAS DE IDIOMA */}
-          <div className="rounded-2xl bg-teal-50/60 border border-teal-100 p-4 space-y-3">
-            <div className="text-xs font-bold text-teal-900">
-              Preferencias lingüísticas (para que otros compañeros te encuentren)
+          <div className="space-y-4">
+            {/* 1. Idiomas que domino / hablo */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800">
+                      Idiomas que domino / hablo
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                      {nativeLanguageCodes.length}/4
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Tu lengua materna y los idiomas que hablas con fluidez (mínimo 1, hasta 4).
+                  </p>
+                </div>
+
+                {nativeLanguageCodes.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={addNativeLang}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Añadir otro idioma que hablo</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {nativeLanguageCodes.map((code, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      value={code}
+                      onChange={(e) => updateNativeLang(idx, e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      {INITIAL_LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag_emoji} {l.name_es}
+                        </option>
+                      ))}
+                    </select>
+
+                    <span className="px-2.5 py-2 rounded-xl bg-teal-50 text-teal-800 font-semibold text-[11px]">
+                      Dominio
+                    </span>
+
+                    {nativeLanguageCodes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeNativeLang(idx)}
+                        aria-label="Eliminar idioma"
+                        className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Mi idioma nativo
-                </label>
-                <select
-                  value={nativeLanguageCode}
-                  onChange={(e) => setNativeLanguageCode(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                >
-                  {INITIAL_LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.flag_emoji} {l.name_es}
-                    </option>
-                  ))}
-                </select>
+
+            {/* 2. Idiomas que deseo aprender (Opcional) */}
+            <div className="rounded-2xl border border-teal-200/80 bg-teal-50/40 p-4 space-y-3 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 pb-2">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-teal-950">
+                      Idiomas que deseo aprender
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                      {learningLanguages.length}/4
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white text-slate-600 border border-slate-200">
+                      Opcional
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Añade hasta 4 idiomas con tu nivel actual (o déjalo vacío si solo deseas enseñar).
+                  </p>
+                </div>
+
+                {learningLanguages.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={addLearningLang}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Añadir idioma para aprender</span>
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Idioma que deseo aprender
-                </label>
-                <select
-                  value={learningLanguageCode}
-                  onChange={(e) => setLearningLanguageCode(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                >
-                  {INITIAL_LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.flag_emoji} {l.name_es}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {learningLanguages.length === 0 ? (
+                <div className="p-3 rounded-xl border border-dashed border-teal-200 bg-white/70 text-center text-xs text-slate-500">
+                  Sin idiomas para aprender seleccionados. Es opcional; pulsa el botón de arriba si deseas agregar hasta 4 idiomas.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {learningLanguages.map((item, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-6 sm:col-span-7">
+                        <select
+                          value={item.languageCode}
+                          onChange={(e) =>
+                            updateLearningLang(idx, { languageCode: e.target.value })
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-medium focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          {INITIAL_LANGUAGES.map((l) => (
+                            <option key={l.code} value={l.code}>
+                              {l.flag_emoji} {l.name_es}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
-                  Mi nivel actual
-                </label>
-                <select
-                  value={learningLevel}
-                  onChange={(e) => setLearningLevel(e.target.value as CefrLevel)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                >
-                  {LEARNING_LEVELS.map((lvl) => (
-                    <option key={lvl.value} value={lvl.value}>
-                      {lvl.label}
-                    </option>
+                      <div className="col-span-5 sm:col-span-4">
+                        <select
+                          value={item.level}
+                          onChange={(e) =>
+                            updateLearningLang(idx, { level: e.target.value as CefrLevel })
+                          }
+                          className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          {LEARNING_LEVELS.map((lvl) => (
+                            <option key={lvl.value} value={lvl.value}>
+                              {lvl.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => removeLearningLang(idx)}
+                          aria-label="Eliminar idioma por aprender"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </select>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

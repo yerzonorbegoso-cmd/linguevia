@@ -91,14 +91,37 @@ export default function OnboardingPage() {
     );
   }
 
-  const addLanguageRow = (type: LanguageRelationType) => {
+  const nativeLanguages = languages.filter((l) => l.relation_type === 'native');
+  const learningLanguages = languages.filter((l) => l.relation_type === 'learning');
+
+  const addNativeLanguage = () => {
+    if (nativeLanguages.length >= 4) return;
+    const usedCodes = languages.map((l) => l.language_code);
+    const available = store.languages.find((l) => l.is_active && !usedCodes.includes(l.code));
+    const nextCode = available?.code || 'en';
     setLanguages((prev) => [
       ...prev,
       {
-        language_code: type === 'native' ? 'es' : 'fr',
-        relation_type: type,
-        proficiency_level: type === 'native' ? 'native' : 'A2',
-        target_goal: '',
+        language_code: nextCode,
+        relation_type: 'native',
+        proficiency_level: 'native',
+        target_goal: 'Compartir mi idioma nativo y cultura',
+      },
+    ]);
+  };
+
+  const addLearningLanguage = () => {
+    if (learningLanguages.length >= 4) return;
+    const usedCodes = languages.map((l) => l.language_code);
+    const available = store.languages.find((l) => l.is_active && !usedCodes.includes(l.code));
+    const nextCode = available?.code || (usedCodes.includes('en') ? 'fr' : 'en');
+    setLanguages((prev) => [
+      ...prev,
+      {
+        language_code: nextCode,
+        relation_type: 'learning',
+        proficiency_level: 'B1',
+        target_goal: 'Practicar fluidez y conversación',
       },
     ]);
   };
@@ -242,142 +265,231 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          {/* Languages */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Mis idiomas (Nativos y en Aprendizaje)
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => addLanguageRow('native')}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Añadir nativo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addLanguageRow('learning')}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-xs font-semibold text-teal-800"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Añadir idioma a practicar</span>
-                </button>
+          {/* Section 1: Native / Spoken Languages (1 to 4) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                    Idiomas que hablo / domino
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                    {nativeLanguages.length} / 4
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Indica tu lengua materna o los idiomas que hablas con fluidez (mínimo 1, máximo 4).
+                </p>
               </div>
+
+              {nativeLanguages.length < 4 && (
+                <button
+                  type="button"
+                  onClick={addNativeLanguage}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Añadir idioma que hablo</span>
+                </button>
+              )}
             </div>
 
-            <div className="space-y-2.5">
-              {languages.map((row, idx) => (
-                <div
-                  key={idx}
-                  className="grid sm:grid-cols-12 gap-2.5 items-center p-3 rounded-2xl border border-slate-200 bg-slate-50/70"
-                >
-                  <div className="sm:col-span-3">
-                    <select
-                      value={row.relation_type}
-                      onChange={(e) => {
-                        const rel = e.target.value as LanguageRelationType;
-                        setLanguages((prev) =>
-                          prev.map((item, i) =>
-                            i === idx
-                              ? {
-                                  ...item,
-                                  relation_type: rel,
-                                  proficiency_level: rel === 'native' ? 'native' : 'B1',
-                                }
-                              : item
-                          )
-                        );
-                      }}
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold"
-                    >
-                      <option value="native">Hablo Nativo</option>
-                      <option value="learning">Aprendo / Practico</option>
-                    </select>
-                  </div>
+            <div className="space-y-3">
+              {languages.map((row, idx) => {
+                if (row.relation_type !== 'native') return null;
 
-                  <div className="sm:col-span-3">
-                    <select
-                      value={row.language_code}
-                      onChange={(e) =>
-                        setLanguages((prev) =>
-                          prev.map((item, i) =>
-                            i === idx ? { ...item, language_code: e.target.value } : item
-                          )
-                        )
-                      }
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
-                    >
-                      {store.languages
-                        .filter((l) => l.is_active)
-                        .map((l) => (
-                          <option key={l.code} value={l.code}>
-                            {l.flag_emoji} {l.name_es}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    {row.relation_type === 'native' ? (
-                      <span className="block px-2.5 py-2 rounded-xl bg-teal-100 text-teal-900 text-xs font-bold text-center">
-                        Nativo
-                      </span>
-                    ) : (
+                return (
+                  <div
+                    key={idx}
+                    className="grid sm:grid-cols-12 gap-2.5 items-center p-3 rounded-2xl border border-slate-200 bg-slate-50/70"
+                  >
+                    <div className="sm:col-span-5">
                       <select
-                        value={row.proficiency_level}
+                        value={row.language_code}
                         onChange={(e) =>
                           setLanguages((prev) =>
                             prev.map((item, i) =>
-                              i === idx
-                                ? { ...item, proficiency_level: e.target.value as CefrLevel }
-                                : item
+                              i === idx ? { ...item, language_code: e.target.value } : item
                             )
                           )
                         }
-                        className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-medium"
                       >
-                        <option value="A1">Nivel A1</option>
-                        <option value="A2">Nivel A2</option>
-                        <option value="B1">Nivel B1</option>
-                        <option value="B2">Nivel B2</option>
-                        <option value="C1">Nivel C1</option>
-                        <option value="C2">Nivel C2</option>
+                        {store.languages
+                          .filter((l) => l.is_active)
+                          .map((l) => (
+                            <option key={l.code} value={l.code}>
+                              {l.flag_emoji} {l.name_es}
+                            </option>
+                          ))}
                       </select>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="sm:col-span-3">
-                    <input
-                      type="text"
-                      value={row.target_goal}
-                      onChange={(e) =>
-                        setLanguages((prev) =>
-                          prev.map((item, i) =>
-                            i === idx ? { ...item, target_goal: e.target.value } : item
+                    <div className="sm:col-span-3">
+                      <span className="block px-3 py-2 rounded-xl bg-teal-100 text-teal-900 text-xs font-bold text-center">
+                        Dominio / Nativo
+                      </span>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <input
+                        type="text"
+                        value={row.target_goal}
+                        onChange={(e) =>
+                          setLanguages((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, target_goal: e.target.value } : item
+                            )
                           )
-                        )
-                      }
-                      placeholder="Meta específica..."
-                      className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
-                    />
-                  </div>
+                        }
+                        placeholder="Nota o enfoque..."
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                      />
+                    </div>
 
-                  <div className="sm:col-span-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => removeLanguageRow(idx)}
-                      aria-label="Eliminar idioma"
-                      className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="sm:col-span-1 flex justify-end">
+                      {nativeLanguages.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => removeLanguageRow(idx)}
+                          aria-label="Eliminar idioma que hablo"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium px-1">Principal</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+          </div>
+
+          {/* Section 2: Learning Languages (0 to 4, Optional) */}
+          <div className="rounded-2xl border border-teal-200/80 bg-teal-50/30 p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-teal-950">
+                    Idiomas que deseo aprender o practicar
+                  </span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                    {learningLanguages.length} / 4
+                  </span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    Opcional
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  Puedes añadir hasta 4 idiomas con tu nivel actual. Si solo deseas enseñar o conversar
+                  en los que dominas, puedes dejarlo vacío.
+                </p>
+              </div>
+
+              {learningLanguages.length < 4 && (
+                <button
+                  type="button"
+                  onClick={addLearningLanguage}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Añadir idioma para aprender</span>
+                </button>
+              )}
+            </div>
+
+            {learningLanguages.length === 0 ? (
+              <div className="p-4 rounded-xl border border-dashed border-teal-200 bg-white/70 text-center text-xs text-slate-500">
+                No has seleccionado ningún idioma por aprender. Es opcional; pulsa el botón de arriba si deseas agregar hasta 4 idiomas.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {languages.map((row, idx) => {
+                  if (row.relation_type !== 'learning') return null;
+
+                  return (
+                    <div
+                      key={idx}
+                      className="grid sm:grid-cols-12 gap-2.5 items-center p-3 rounded-2xl border border-teal-100 bg-white"
+                    >
+                      <div className="sm:col-span-4">
+                        <select
+                          value={row.language_code}
+                          onChange={(e) =>
+                            setLanguages((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, language_code: e.target.value } : item
+                              )
+                            )
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-medium"
+                        >
+                          {store.languages
+                            .filter((l) => l.is_active)
+                            .map((l) => (
+                              <option key={l.code} value={l.code}>
+                                {l.flag_emoji} {l.name_es}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <select
+                          value={row.proficiency_level}
+                          onChange={(e) =>
+                            setLanguages((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, proficiency_level: e.target.value as CefrLevel }
+                                  : item
+                              )
+                            )
+                          }
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold text-teal-800"
+                        >
+                          <option value="A1">Nivel A1 (Principiante)</option>
+                          <option value="A2">Nivel A2 (Básico)</option>
+                          <option value="B1">Nivel B1 (Intermedio)</option>
+                          <option value="B2">Nivel B2 (Intermedio Alto)</option>
+                          <option value="C1">Nivel C1 (Avanzado)</option>
+                          <option value="C2">Nivel C2 (Maestría)</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-4">
+                        <input
+                          type="text"
+                          value={row.target_goal}
+                          onChange={(e) =>
+                            setLanguages((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, target_goal: e.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="Meta (ej. hablar con nativos, viajar)..."
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => removeLanguageRow(idx)}
+                          aria-label="Eliminar idioma por aprender"
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Interests */}
