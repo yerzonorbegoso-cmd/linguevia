@@ -87,7 +87,9 @@ export default function AdminDashboardPage() {
   }
 
   const isAuthorizedAdmin =
-    currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator');
+    currentUser &&
+    currentUser.role === 'admin' &&
+    currentUser.username.toLowerCase() === 'yherzon21';
 
   if (!isAuthorizedAdmin) {
     return (
@@ -98,31 +100,20 @@ export default function AdminDashboardPage() {
         >
           <ShieldAlert className="w-10 h-10 text-rose-600 mx-auto" />
           <h1 className="text-xl font-bold text-slate-900">
-            Acceso Restringido: Panel de Administración (RBAC)
+            Acceso Restringido: Panel de Administración
           </h1>
           <p className="text-xs text-slate-600">
-            Esta ruta está protegida por rol (`admin` o `moderator`). Tu cuenta actual no tiene
-            privilegios administrativos.
+            Esta sección es de acceso privado y exclusivo para la cuenta del Administrador oficial (
+            <strong className="text-slate-900 font-mono">@Yherzon21</strong>). Ninguna otra cuenta
+            tiene permisos de administración.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            {currentUser && (
-              <button
-                type="button"
-                onClick={async () => {
-                  await adminPromoteCurrentUser();
-                }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs"
-              >
-                Habilitar permisos de Administrador para @{currentUser.username}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => loginWithDemoAccount('demo-user-elena')}
+            <Link
+              href="/login"
               className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold"
             >
-              Cambiar a Elena (Rol Admin Demo)
-            </button>
+              Iniciar sesión como @Yherzon21
+            </Link>
             <Link
               href="/dashboard"
               className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold"

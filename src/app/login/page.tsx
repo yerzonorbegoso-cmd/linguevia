@@ -112,8 +112,19 @@ export default function LoginPage() {
 
         {env.demoMode && (
           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 space-y-2 text-xs">
-            <div className="font-semibold text-slate-700">Cuentas rápidas de demostración:</div>
+            <div className="font-semibold text-slate-700">Acceso rápido a cuentas del sistema:</div>
             <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  loginWithDemoAccount('admin-yherzon21');
+                  router.push('/admin');
+                }}
+                className="p-2 rounded-lg bg-teal-50 border border-teal-200 hover:border-teal-500 text-left"
+              >
+                <div className="font-bold text-teal-900">🛡️ Yherzon21 (Admin)</div>
+                <div className="text-[10px] text-teal-700 font-mono">@Yherzon21</div>
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -122,19 +133,8 @@ export default function LoginPage() {
                 }}
                 className="p-2 rounded-lg bg-white border border-slate-200 hover:border-teal-500 text-left"
               >
-                <div className="font-bold text-slate-800">Elena (Admin)</div>
+                <div className="font-bold text-slate-800">Elena (Usuario)</div>
                 <div className="text-[10px] text-slate-500">@elena_madrid_demo</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  loginWithDemoAccount('demo-user-liam');
-                  router.push('/dashboard');
-                }}
-                className="p-2 rounded-lg bg-white border border-slate-200 hover:border-teal-500 text-left"
-              >
-                <div className="font-bold text-slate-800">Liam (Usuario)</div>
-                <div className="text-[10px] text-slate-500">@liam_london_demo</div>
               </button>
             </div>
           </div>

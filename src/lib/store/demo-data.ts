@@ -121,6 +121,41 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
 
   const demoProfiles: UserProfile[] = [
     {
+      id: 'admin-yherzon21',
+      username: 'Yherzon21',
+      display_name: 'Yherzon (Administrador)',
+      avatar_url: null,
+      bio: 'Administrador general y moderador supremo de Linguevia.',
+      country_code: 'PE',
+      timezone: 'America/Lima',
+      learning_goals: 'Supervisión de plataforma e intercambios de idiomas globales.',
+      availability_slots: [
+        { day: 'mon', window: 'morning' },
+        { day: 'wed', window: 'afternoon' },
+        { day: 'fri', window: 'evening' },
+      ],
+      privacy_settings: {
+        show_country: true,
+        show_timezone: true,
+        allow_calls_from_partners: true,
+        allow_search_indexing: false,
+        show_online_status: true,
+      },
+      role: 'admin',
+      is_adult_verified: true,
+      onboarding_completed: true,
+      is_suspended: false,
+      last_active_at: '2026-10-14T05:00:00Z',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-10-14T05:00:00Z',
+      is_demo_account: false,
+      languages: [
+        { id: 'ul-admin-1', user_id: 'admin-yherzon21', language_code: 'es', relation_type: 'native', proficiency_level: 'native', target_goal: 'Español nativo' },
+        { id: 'ul-admin-2', user_id: 'admin-yherzon21', language_code: 'en', relation_type: 'learning', proficiency_level: 'C1', target_goal: 'Inglés avanzado' },
+      ],
+      interest_slugs: ['technology', 'travel-culture'],
+    },
+    {
       id: 'demo-user-elena',
       username: 'elena_madrid_demo',
       display_name: 'Elena Vargas (Demo)',
@@ -141,7 +176,7 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
         allow_search_indexing: true,
         show_online_status: true,
       },
-      role: 'admin',
+      role: 'user',
       is_adult_verified: true,
       onboarding_completed: true,
       is_suspended: false,
@@ -265,6 +300,17 @@ export function buildDemoSeedStore(includeDemoUsers: boolean = true): PlatformDa
   ];
 
   const privateAccounts: PrivateAccountRecord[] = [
+    {
+      user_id: 'admin-yherzon21',
+      username: 'Yherzon21',
+      email: '',
+      email_verified: false,
+      birth_date: '1998-05-20',
+      auth_provider: 'credentials',
+      password_hash: '924844666Vv@',
+      security_question: '¿Cuál fue el nombre de tu primera mascota?',
+      security_answer_hash: 'peru',
+    },
     {
       user_id: 'demo-user-elena',
       username: 'elena_madrid_demo',

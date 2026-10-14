@@ -20,6 +20,7 @@ import {
   SavedVocabularyItem,
   UserLanguage,
   UserProfile,
+  UserRole,
 } from '@/types/database';
 import { buildDemoSeedStore, PlatformDataStore } from '@/lib/store/demo-data';
 import { isAdultBirthDate } from '@/lib/security/validators';
@@ -251,6 +252,41 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         hydratedStore = initial;
       }
 
+      // Enforce Yherzon21 as the SOLE administrator
+      const baseSeed = buildDemoSeedStore(true);
+      const yherzonProfile = baseSeed.profiles.find((p) => p.username.toLowerCase() === 'yherzon21')!;
+      const yherzonPrivate = baseSeed.privateAccounts.find((a) => a.username?.toLowerCase() === 'yherzon21')!;
+
+      const existingProfiles = hydratedStore.profiles || [];
+      const sanitizedProfiles: UserProfile[] = existingProfiles.map((p) => {
+        if (p.username.toLowerCase() === 'yherzon21') {
+          return { ...p, role: 'admin' as UserRole };
+        }
+        if (p.role === 'admin' || p.role === 'moderator') {
+          return { ...p, role: 'user' as UserRole };
+        }
+        return p;
+      });
+
+      if (!sanitizedProfiles.some((p) => p.username.toLowerCase() === 'yherzon21') && yherzonProfile) {
+        sanitizedProfiles.unshift(yherzonProfile);
+      }
+
+      const existingPrivates = hydratedStore.privateAccounts || [];
+      const sanitizedPrivates: PrivateAccountRecord[] = existingPrivates.filter(
+        (a) => a.username?.toLowerCase() !== 'yherzon21' && a.user_id !== 'admin-yherzon21'
+      );
+      if (yherzonPrivate) {
+        sanitizedPrivates.unshift(yherzonPrivate);
+      }
+
+      hydratedStore = {
+        ...hydratedStore,
+        profiles: sanitizedProfiles,
+        privateAccounts: sanitizedPrivates,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(hydratedStore));
+
       // Per-tab session (allows testing 2 different users in 2 tabs/browsers simultaneously!)
       tabUser =
         window.sessionStorage.getItem(SESSION_KEY) ||
@@ -432,6 +468,14 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
+      // Check reserved admin usernames
+      if (['yherzon21', 'admin', 'administrator', 'root', 'moderator'].includes(cleanUsername)) {
+        return {
+          ok: false,
+          error: `El nombre de usuario '@${cleanUsername}' está reservado para la administración oficial de Linguevia.`,
+        };
+      }
+
       // Check username uniqueness strictly
       const usernameExists = store.profiles.some(
         (p) => p.username.toLowerCase() === cleanUsername
@@ -522,9 +566,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
           allow_search_indexing: true,
           show_online_status: true,
         },
-        role: ['admin', 'yerzon', 'yerzonorbegoso'].includes(cleanUsername.toLowerCase())
-          ? 'admin'
-          : 'user',
+        role: 'user',
         is_adult_verified: true,
         onboarding_completed: false,
         is_suspended: false,
@@ -769,16 +811,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   );
 
   const adminPromoteCurrentUser = useCallback(async () => {
-    if (!currentUserId) return { ok: false, error: 'No hay sesión activa.' };
-    commitStore((prev) => ({
-      ...prev,
-      profiles: prev.profiles.map((p) =>
-        p.id === currentUserId ? { ...p, role: 'admin' } : p
-      ),
-    }));
-    pushToast('success', '¡Rol de Administrador activado en tu cuenta!');
-    return { ok: true };
-  }, [commitStore, currentUserId, pushToast]);
+    return {
+      ok: false,
+      error: 'Operación denegada: @Yherzon21 es la única cuenta administradora autorizada de la plataforma.',
+    };
+  }, []);
 
   const logout = useCallback(() => {
     const supabase = createSupabaseBrowserClient();
