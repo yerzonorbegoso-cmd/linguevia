@@ -206,11 +206,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     logout();
                     router.push('/');
                   }}
+                  title="Cerrar sesión / Salir de la cuenta"
                   aria-label="Cerrar sesión"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="hidden lg:inline">Salir</span>
+                  <span className="hidden sm:inline">Salir</span>
                 </button>
               </>
             ) : (

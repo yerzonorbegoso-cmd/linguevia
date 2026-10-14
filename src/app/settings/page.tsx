@@ -10,6 +10,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 import { PrivacySettings } from '@/types/database';
@@ -26,6 +27,7 @@ export default function SettingsAndPrivacyPage() {
     updateConsentPreferences,
     unblockUser,
     deleteOwnAccount,
+    logout,
     loginWithDemoAccount,
   } = usePlatform();
 
@@ -335,6 +337,32 @@ export default function SettingsAndPrivacyPage() {
             })}
           </ul>
         )}
+      </section>
+
+      {/* Session Management */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-slate-700" />
+              <span>Sesión activa</span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Has iniciado sesión como <strong className="text-slate-900">@{currentUser.username}</strong> ({currentUser.display_name}).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              router.push('/');
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors shadow-xs shrink-0 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Salir de la cuenta (Cerrar sesión)</span>
+          </button>
+        </div>
       </section>
 
       {/* Permanent Account Deletion */}

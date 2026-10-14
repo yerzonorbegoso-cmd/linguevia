@@ -2,6 +2,7 @@
 
 import React, { use, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Globe2,
   Clock,
@@ -11,6 +12,8 @@ import {
   Ban,
   ArrowLeft,
   Lock,
+  LogOut,
+  Settings,
 } from 'lucide-react';
 import { usePlatform } from '@/components/providers/PlatformProvider';
 import { selectSafePublicProfile } from '@/lib/security/rls-guard';
@@ -22,6 +25,7 @@ export default function PublicProfilePage({
 }: {
   params: Promise<{ username: string }>;
 }) {
+  const router = useRouter();
   const { username } = use(params);
   const {
     isHydrated,
@@ -30,8 +34,10 @@ export default function PublicProfilePage({
     sendConversationRequest,
     blockUser,
     submitModerationReport,
+    logout,
   } = usePlatform();
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportCategory, setReportCategory] = useState<ReportReasonCategory>('spam');
   const [reportDesc, setReportDesc] = useState('');
@@ -134,12 +140,22 @@ export default function PublicProfilePage({
           </div>
 
           {isOwnProfile && (
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs"
-            >
-              <span>Editar mis idiomas y preferencias de aprendizaje</span>
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/onboarding"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              >
+                <span>Editar mis idiomas y preferencias</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold shadow-xs transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Salir de la cuenta</span>
+              </button>
+            </div>
           )}
 
           {!isOwnProfile && currentUser && (
@@ -286,6 +302,38 @@ export default function PublicProfilePage({
               ))}
             </div>
           </div>
+
+          {/* Account session control for profile owner */}
+          {isOwnProfile && (
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-teal-600" />
+                  <span>Tu cuenta activa (@{safeProfile.username})</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Estás viendo tu propio perfil. Puedes cerrar sesión de forma segura o editar tus preferencias.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/settings"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>Ajustes</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Cerrar sesión</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -369,6 +417,49 @@ export default function PublicProfilePage({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div className="max-w-sm w-full rounded-3xl bg-white border border-slate-200 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
+              <LogOut className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h2 className="text-base font-bold text-slate-900">
+                ¿Deseas salir de tu cuenta?
+              </h2>
+              <p className="text-xs text-slate-500">
+                Se cerrará tu sesión activa como <strong className="text-slate-800">@{safeProfile.username}</strong> en este navegador.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                  router.push('/');
+                }}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
+              >
+                Salir de la cuenta
+              </button>
+            </div>
           </div>
         </div>
       )}
