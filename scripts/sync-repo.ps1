@@ -36,8 +36,17 @@ public class GitAutoSync {
 }
 "@
 
+param (
+    [string]$CommitMessage = "chore: platform updates"
+)
+
 $token = [GitAutoSync]::ReadCred("GitHub - https://api.github.com/yerzonorbegoso-cmd")
 if ($token) {
+    $status = git status --porcelain
+    if ($status) {
+        git add .
+        git commit -m $CommitMessage
+    }
     git push "https://yerzonorbegoso-cmd:$token@github.com/yerzonorbegoso-cmd/linguevia.git" main
     git fetch origin main
 } else {
